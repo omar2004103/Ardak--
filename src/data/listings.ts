@@ -57,6 +57,15 @@ export const listings: Listing[] = [
     ownersCount: 1,
     documentsAvailable: ['عقد مسجل شهر عقاري نهائي', 'شهادة سلبية خلو موانع', 'ترخيص بئر معتمد من الري'],
     verificationStatus: 'verified',
+    customImages: [
+      'https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1592417817098-8f3d6910985b?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?auto=format&fit=crop&w=1200&q=80',
+    ],
+    documentImages: [
+      'https://images.unsplash.com/photo-1568667256549-094345857637?auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=1000&q=80',
+    ],
     contactPhone: '01012345671',
     whatsappNumber: '201012345671',
     description: 'أرض زراعية نموذجية بوادي النطرون، مزروعة بالكامل زيتون وموالح عمر 5 سنوات منتجة، مجهزة بشبكة ري بالتنقيط ومحول كهرباء خاص، وبئر مياه عذب 450 جزء في المليون.',

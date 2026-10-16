@@ -148,12 +148,18 @@ export const SoldDealsSection: React.FC<SoldDealsSectionProps> = ({
         </div>
 
         {/* Deals Cards / Table Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredDeals.map((deal) => (
-            <div
-              key={deal.id}
-              className="bg-white rounded-2xl border border-[#e2eae5] p-5 shadow-2xs hover:shadow-sm transition-all space-y-3"
-            >
+        {filteredDeals.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-dashed border-[#cbd5e1] p-12 text-center text-xs text-[#527963] space-y-2">
+            <p className="font-bold text-sm text-[#14281d]">لا توجد صفقات منفذة مسجلة حالياً</p>
+            <p>سيتم إدراج الصفقات الزراعية الموثقة فور إتمامها واعتمادها من الإدارة.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredDeals.map((deal) => (
+              <div
+                key={deal.id}
+                className="bg-white rounded-2xl border border-[#e2eae5] p-5 shadow-2xs hover:shadow-sm transition-all space-y-3"
+              >
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#16a34a] bg-[#f0fdf4] px-2 py-0.5 rounded-md border border-[#bbf7d0] mb-1">
@@ -216,6 +222,7 @@ export const SoldDealsSection: React.FC<SoldDealsSectionProps> = ({
             </div>
           ))}
         </div>
+        )}
       </div>
     </section>
   );

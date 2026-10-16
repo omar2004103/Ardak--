@@ -1,0 +1,83 @@
+<svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background transparent -->
+  <rect width="500" height="500" fill="none" />
+
+  <!-- Ardak Emblem -->
+  <g transform="translate(100, 40)">
+    <!-- 1. Top-Left Green Block -->
+    <path
+      d="M 40 70 
+         H 170 
+         V 140 
+         C 120 152, 78 166, 40 178 
+         V 70 
+         Z"
+      fill="#17432E"
+    />
+
+    <!-- 2. Bottom-Left Green Curved Segment -->
+    <path
+      d="M 40 198 
+         C 84 186, 126 170, 154 154 
+         L 132 220 
+         C 108 256, 78 266, 40 266 
+         V 198 
+         Z"
+      fill="#17432E"
+    />
+
+    <!-- 3. Tall Right Vertical Sprout / Alif -->
+    <path
+      d="M 204 152 
+         V 54 
+         C 204 54, 214 30, 230 30 
+         H 232 
+         V 166 
+         C 222 160, 213 156, 204 152 
+         Z"
+      fill="#17432E"
+    />
+
+    <!-- 4. Bottom-Right Sand/Beige Parcel -->
+    <path
+      d="M 174 164 
+         L 146 266 
+         C 192 264, 222 234, 232 178 
+         C 214 171, 194 167, 174 164 
+         Z"
+      fill="#DDD6C6"
+    />
+
+    <!-- 5. Terracotta Accent Dot (The Seed / Sun) -->
+    <circle cx="187" cy="146" r="10.5" fill="#C0623C" />
+  </g>
+
+  <!-- Typography -->
+  <g transform="translate(250, 385)" text-anchor="middle">
+    <!-- Arabic Brand Name: أرضك -->
+    <text
+      x="0"
+      y="0"
+      font-family="'Cairo', 'Tajawal', system-ui, sans-serif"
+      font-weight="900"
+      font-size="64"
+      fill="#14281D"
+      letter-spacing="-1px"
+    >
+      <tspan fill="#C0623C">أ</tspan><tspan fill="#14281D">رضك</tspan>
+    </text>
+
+    <!-- English Brand Subtitle: A r d a k -->
+    <text
+      x="0"
+      y="42"
+      font-family="system-ui, -apple-system, sans-serif"
+      font-weight="700"
+      font-size="20"
+      fill="#C0623C"
+      letter-spacing="12px"
+    >
+      ARDAK
+    </text>
+  </g>
+</svg>

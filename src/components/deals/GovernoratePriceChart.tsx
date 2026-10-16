@@ -163,12 +163,17 @@ export const GovernoratePriceChart: React.FC<GovernoratePriceChartProps> = ({ de
       </div>
 
       {/* Chart Canvas */}
-      <div className="w-full h-72 sm:h-80 pt-2" dir="ltr">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={chartData}
-            margin={{ top: 20, right: 15, left: 10, bottom: 25 }}
-          >
+      {chartData.length === 0 ? (
+        <div className="py-16 text-center text-xs text-[#527963] bg-[#fcfdfc] rounded-xl border border-dashed border-[#d1d5db]">
+          لا توجد صفقات منفذة مسجلة حالياً لعرض الرسم البياني. ستظهر الإحصائيات التحليلية تلقائياً فور تسجيل الصفقات الفعلية.
+        </div>
+      ) : (
+        <div className="w-full h-72 sm:h-80 pt-2" dir="ltr">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartData}
+              margin={{ top: 20, right: 15, left: 10, bottom: 25 }}
+            >
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf3ef" />
             <XAxis
               dataKey="governorate"
@@ -205,30 +210,33 @@ export const GovernoratePriceChart: React.FC<GovernoratePriceChartProps> = ({ de
           </BarChart>
         </ResponsiveContainer>
       </div>
+      )}
 
       {/* Legend / Key Insights */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[#edf3ef] text-right text-xs">
-        <div className="bg-[#fcfdfc] p-2.5 rounded-xl border border-[#edf3ef]">
-          <span className="text-[10px] text-[#6b7280] block">المحافظة الأعلى سعراً:</span>
-          <span className="font-extrabold text-[#166534]">
-            {chartData[0]?.governorate} ({chartData[0]?.avgPricePerFeddan.toLocaleString('ar-EG')} ج.م)
-          </span>
+      {chartData.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[#edf3ef] text-right text-xs">
+          <div className="bg-[#fcfdfc] p-2.5 rounded-xl border border-[#edf3ef]">
+            <span className="text-[10px] text-[#6b7280] block">المحافظة الأعلى سعراً:</span>
+            <span className="font-extrabold text-[#166534]">
+              {chartData[0]?.governorate} ({chartData[0]?.avgPricePerFeddan.toLocaleString('ar-EG')} ج.م)
+            </span>
+          </div>
+          <div className="bg-[#fcfdfc] p-2.5 rounded-xl border border-[#edf3ef]">
+            <span className="text-[10px] text-[#6b7280] block">المحافظة الأنسب استصلاحاً:</span>
+            <span className="font-extrabold text-[#0284c7]">
+              {chartData[chartData.length - 1]?.governorate} ({chartData[chartData.length - 1]?.avgPricePerFeddan.toLocaleString('ar-EG')} ج.م)
+            </span>
+          </div>
+          <div className="bg-[#fcfdfc] p-2.5 rounded-xl border border-[#edf3ef]">
+            <span className="text-[10px] text-[#6b7280] block">إجمالي المحافظات المرصودة:</span>
+            <span className="font-bold text-[#14281d]">{chartData.length} محافظات رئيسية</span>
+          </div>
+          <div className="bg-[#fcfdfc] p-2.5 rounded-xl border border-[#edf3ef]">
+            <span className="text-[10px] text-[#6b7280] block">تحديث المؤشر:</span>
+            <span className="font-bold text-[#16a34a]">مباشر بناءً على الصفقات الموثقة</span>
+          </div>
         </div>
-        <div className="bg-[#fcfdfc] p-2.5 rounded-xl border border-[#edf3ef]">
-          <span className="text-[10px] text-[#6b7280] block">المحافظة الأنسب استصلاحاً:</span>
-          <span className="font-extrabold text-[#0284c7]">
-            {chartData[chartData.length - 1]?.governorate} ({chartData[chartData.length - 1]?.avgPricePerFeddan.toLocaleString('ar-EG')} ج.م)
-          </span>
-        </div>
-        <div className="bg-[#fcfdfc] p-2.5 rounded-xl border border-[#edf3ef]">
-          <span className="text-[10px] text-[#6b7280] block">إجمالي المحافظات المرصودة:</span>
-          <span className="font-bold text-[#14281d]">{chartData.length} محافظات رئيسية</span>
-        </div>
-        <div className="bg-[#fcfdfc] p-2.5 rounded-xl border border-[#edf3ef]">
-          <span className="text-[10px] text-[#6b7280] block">تحديث المؤشر:</span>
-          <span className="font-bold text-[#16a34a]">مباشر بناءً على الصفقات الموثقة</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

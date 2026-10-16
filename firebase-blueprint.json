@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile document storing account information and roles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "governorate": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "agent", "company", "admin", "owner"] },
+        "accountType": { "type": "string", "enum": ["مالك", "وسيط", "شركة عقارية"] },
+        "phoneVerified": { "type": "boolean" },
+        "emailVerified": { "type": "boolean" },
+        "verificationLevel": { "type": "string", "enum": ["member", "verified_user", "verified_company"] },
+        "status": { "type": "string", "enum": ["active", "blocked"] },
+        "joinedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "phone", "role", "status"]
+    },
+    "Listing": {
+      "title": "Listing",
+      "description": "Agricultural land or farm listing document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "price": { "type": "string" },
+        "rawPrice": { "type": "number" },
+        "area": { "type": "number" },
+        "areaUnit": { "type": "string" },
+        "governorate": { "type": "string" },
+        "city": { "type": "string" },
+        "propertyType": { "type": "string" },
+        "listingType": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "status": { "type": "string", "enum": ["published", "pending_approval", "paused", "rejected"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "rawPrice", "area", "governorate", "ownerId", "status"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Report submitted against an ad",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "listingId": { "type": "string" },
+        "listingTitle": { "type": "string" },
+        "reporterName": { "type": "string" },
+        "reporterPhone": { "type": "string" },
+        "reason": { "type": "string" },
+        "details": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "resolved", "dismissed"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "listingId", "reporterPhone", "reason", "status"]
+    },
+    "VerificationRequest": {
+      "title": "VerificationRequest",
+      "description": "Account verification or business upgrade request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhone": { "type": "string" },
+        "userRole": { "type": "string" },
+        "requestedLevel": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "submittedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "requestedLevel", "status"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Administrative actions audit log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "action": { "type": "string" },
+        "target": { "type": "string" },
+        "admin": { "type": "string" },
+        "time": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "action", "admin", "time"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Collection of user account profiles"
+    },
+    "/listings/{listingId}": {
+      "schema": { "$ref": "#/entities/Listing" },
+      "description": "Collection of agricultural land listings"
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/Report" },
+      "description": "Listing reports submitted by users"
+    },
+    "/verifications/{verificationId}": {
+      "schema": { "$ref": "#/entities/VerificationRequest" },
+      "description": "Account identity verification requests"
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Audit logs for admin actions"
+    }
+  }
+}

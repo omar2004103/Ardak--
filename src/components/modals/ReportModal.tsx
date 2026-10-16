@@ -38,7 +38,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       listingId: listing.id,
       listingTitle: listing.title,
       reporterName: reporterName.trim() || 'فاعل خير',
-      reporterPhone: reporterPhone.trim() || '01000000000',
+      reporterPhone: reporterPhone.trim() || '01028200048',
       reason,
       details,
     });

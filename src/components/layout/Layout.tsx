@@ -26,7 +26,7 @@ export const Layout: React.FC<LayoutProps> = ({
         onLoginClick={onLoginClick}
       />
       <main className="flex-1">{children}</main>
-      <Footer />
+      <Footer onLoginClick={onLoginClick} onNavigate={onNavigate} />
     </div>
   );
 };

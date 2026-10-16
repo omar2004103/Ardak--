@@ -334,6 +334,7 @@ function MainApp() {
           onNavigateHome={() => navigateTo('home')}
           comparedIds={comparedIds}
           onToggleCompare={handleToggleCompare}
+          onOpenLogin={() => setIsAuthModalOpen(true)}
         />
       )}
 

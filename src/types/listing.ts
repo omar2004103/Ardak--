@@ -99,6 +99,10 @@ export interface Listing {
   documentsAvailable?: string[];
   verificationStatus?: 'verified' | 'pending' | 'unverified';
 
+  // صور الأرض والمستندات المرفوعة من الجهاز
+  customImages?: string[]; // صور الأرض والمزرعة المرفوعة من جهاز المستخدم
+  documentImages?: string[]; // صور العقود والمستندات الرسمية والأوراق القانونية
+
   // بيانات التواصل والمعلن
   contactPhone: string;
   whatsappNumber: string;
@@ -227,12 +231,16 @@ export interface User {
   role: UserRole;
   accountType?: AdvertiserType;
   phoneVerified?: boolean;
+  emailVerified?: boolean;
+  firebaseUid?: string;
   verificationLevel?: VerificationLevel;
   companyProfile?: CompanyProfile;
   status: 'active' | 'blocked';
   joinedAt: string;
   avatar?: string;
   password?: string;
+  priceAlerts?: string[];
+  priceAlertsEnabled?: boolean;
 }
 
 export interface VerificationRequest {

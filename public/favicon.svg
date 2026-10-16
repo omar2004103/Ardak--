@@ -1,0 +1,52 @@
+<svg viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rounded Shield Background -->
+  <rect width="300" height="300" rx="60" fill="#f8faf9" />
+  <g transform="translate(45, 25)">
+    <!-- 1. Top-Left Green Block -->
+    <path
+      d="M 30 50 
+         H 116 
+         V 96 
+         C 84 103, 56 112, 30 119 
+         V 50 
+         Z"
+      fill="#17432E"
+    />
+
+    <!-- 2. Bottom-Left Green Curved Segment -->
+    <path
+      d="M 30 132 
+         C 58 124, 86 114, 105 103 
+         L 90 148 
+         C 74 172, 54 179, 30 179 
+         V 132 
+         Z"
+      fill="#17432E"
+    />
+
+    <!-- 3. Tall Right Vertical Sprout / Alif -->
+    <path
+      d="M 138 102 
+         V 38 
+         C 138 38, 145 22, 155 22 
+         H 156 
+         V 112 
+         C 150 108, 144 105, 138 102 
+         Z"
+      fill="#17432E"
+    />
+
+    <!-- 4. Bottom-Right Sand/Beige Parcel -->
+    <path
+      d="M 119 110 
+         L 100 179 
+         C 130 178, 150 158, 156 120 
+         C 144 115, 131 112, 119 110 
+         Z"
+      fill="#DDD6C6"
+    />
+
+    <!-- 5. Terracotta Accent Dot -->
+    <circle cx="127" cy="98" r="6.8" fill="#C0623C" />
+  </g>
+</svg>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Listing } from '../../types/listing.ts';
-import { MapPin, Maximize2, Phone, MessageSquare, Eye, Layers, Scale, Heart, CheckCircle2 } from 'lucide-react';
+import { MapPin, Maximize2, Phone, MessageSquare, Eye, Layers, Scale, Heart, CheckCircle2, Camera, FileCheck, Bell, BellRing } from 'lucide-react';
 import { useApp } from '../../context/AppContext.tsx';
 
 interface ListingCardProps {
@@ -16,8 +16,49 @@ export const ListingCard: React.FC<ListingCardProps> = ({
   isComparing = false,
   onToggleCompare,
 }) => {
-  const { isFavorite, toggleFavorite } = useApp();
+  const { isFavorite, toggleFavorite, users, isPriceAlertActive, togglePriceAlert, currentUser } = useApp();
   const favorited = isFavorite(listing.id);
+  const isAlertActive = isPriceAlertActive(listing.id);
+
+  // استرجاع صاحب الإعلان من قائمة المستخدمين لمطابقة رقم الهاتف في الملف الشخصي
+  const ownerUser = users.find(
+    (u) =>
+      u.id === listing.ownerId ||
+      u.name === listing.ownerName ||
+      (listing.ownerId === 'owner-001' && (u.id === 'user-001' || u.role === 'user'))
+  );
+
+  const profilePhone =
+    ownerUser?.companyProfile?.whatsapp ||
+    ownerUser?.companyProfile?.phone ||
+    ownerUser?.phone ||
+    listing.whatsappNumber ||
+    listing.contactPhone ||
+    '01012345671';
+
+  const cleanWhatsAppNumber = (rawPhone: string) => {
+    const cleaned = rawPhone.replace(/\D/g, '');
+    if (cleaned.startsWith('01') && cleaned.length === 11) {
+      return `20${cleaned.substring(1)}`;
+    }
+    if (cleaned.startsWith('20')) {
+      return cleaned;
+    }
+    if (cleaned.startsWith('1') && cleaned.length === 10) {
+      return `20${cleaned}`;
+    }
+    return cleaned || '201012345671';
+  };
+
+  const waNumber = cleanWhatsAppNumber(profilePhone);
+
+  const landUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/#land-${listing.id}`
+      : `https://ardak.eg/land/${listing.id}`;
+
+  const waMessage = `مرحباً، أرغب في الاستفسار عن أرضك المعروضة على منصة أرضك: [${landUrl}]\n📌 *العنوان:* ${listing.title}\n💰 *السعر المطلوب:* ${listing.price}\n📐 *المساحة:* ${listing.area} ${listing.areaUnit}\n📍 *الموقع:* ${listing.governorate} - ${listing.city}`;
+  const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMessage)}`;
   // SVG Graphic placeholder themes based on Egyptian agricultural landscape
   const renderPlaceholderGraphic = () => {
     switch (listing.imagePlaceholder.theme) {
@@ -105,7 +146,34 @@ export const ListingCard: React.FC<ListingCardProps> = ({
       <div>
         {/* Card Visual Header with Badges */}
         <div className="h-48 relative overflow-hidden bg-[#e8f1ec]">
-          {renderPlaceholderGraphic()}
+          {listing.customImages && listing.customImages.length > 0 ? (
+            <div className="relative w-full h-full group-hover:scale-105 transition-transform duration-300">
+              <img
+                src={listing.customImages[0]}
+                alt={listing.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+            </div>
+          ) : (
+            renderPlaceholderGraphic()
+          )}
+
+          {/* Badges for uploaded photos and papers */}
+          <div className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 pointer-events-none">
+            {listing.customImages && listing.customImages.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/65 backdrop-blur-xs text-white shadow-xs">
+                <Camera className="w-3 h-3 text-[#4ade80]" />
+                <span>{listing.customImages.length} صور</span>
+              </span>
+            )}
+            {listing.documentImages && listing.documentImages.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#166534]/90 backdrop-blur-xs text-white shadow-xs">
+                <FileCheck className="w-3 h-3 text-[#86efac]" />
+                <span>{listing.documentImages.length} أوراق رسمية</span>
+              </span>
+            )}
+          </div>
 
           {/* Listing Type & Trust Badges */}
           <div className="absolute top-3.5 right-3.5 z-20 flex items-center gap-1.5">
@@ -177,6 +245,34 @@ export const ListingCard: React.FC<ListingCardProps> = ({
             aria-label={favorited ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}
           >
             <Heart className={`w-3.5 h-3.5 ${favorited ? 'fill-[#e11d48]' : ''}`} />
+          </button>
+
+          {/* Price Drop Alert Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePriceAlert(listing.id);
+            }}
+            className={`absolute bottom-3 right-12 z-20 p-1.5 rounded-lg transition-all shadow-xs cursor-pointer ${
+              isAlertActive
+                ? 'bg-[#dcfce7] text-[#166534] border border-[#86efac] ring-1 ring-[#166534]/30'
+                : 'bg-white/90 backdrop-blur-xs text-[#6b7280] hover:text-[#166534] hover:bg-white border border-white/50'
+            }`}
+            title={
+              currentUser
+                ? isAlertActive
+                  ? 'تنبيه انخفاض السعر مفعّل (انقر للإلغاء)'
+                  : 'تفعيل تنبيه انخفاض السعر'
+                : 'سجّل الدخول لتفعيل تنبيهات انخفاض الأسعار'
+            }
+            aria-label={isAlertActive ? 'تنبيه انخفاض السعر مفعّل' : 'تفعيل تنبيه انخفاض السعر'}
+          >
+            {isAlertActive ? (
+              <BellRing className="w-3.5 h-3.5 text-[#16a34a]" />
+            ) : (
+              <Bell className="w-3.5 h-3.5" />
+            )}
           </button>
         </div>
 
@@ -250,12 +346,11 @@ export const ListingCard: React.FC<ListingCardProps> = ({
 
           {/* WhatsApp button */}
           <a
-            href={`https://wa.me/${listing.whatsappNumber}?text=${encodeURIComponent(
-              `مرحباً، أستفسر بخصوص إعلان: ${listing.title} على منصة أرضك`
-            )}`}
+            href={waLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="col-span-1 inline-flex items-center justify-center gap-1 py-2 px-2 rounded-lg bg-[#25d366]/10 hover:bg-[#25d366]/20 text-[#15803d] font-bold text-xs border border-[#86efac] transition-colors"
+            className="col-span-1 inline-flex items-center justify-center gap-1 py-2 px-2 rounded-lg bg-[#25d366]/10 hover:bg-[#25d366]/20 text-[#15803d] font-bold text-xs border border-[#86efac] transition-colors cursor-pointer"
+            title="تواصل مباشر عبر واتساب مع صاحب الإعلان"
           >
             <MessageSquare className="w-3.5 h-3.5 text-[#16a34a]" />
             <span>واتساب</span>

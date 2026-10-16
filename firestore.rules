@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Trusted Admin check: user profile has role == 'admin' OR bootstrapped owner admin email
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'omaradelh2004@gmail.com' && request.auth.token.email_verified == true) ||
+        (request.auth.token.email == 'admin@ardak.eg') ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // USERS COLLECTION
+    // Public read is permitted for advertiser profile cards so buyers can see seller info
+    // Allows initial seed / self profile write, prevents non-admins from granting admin role
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if (
+        !('role' in request.resource.data) ||
+        request.resource.data.role != 'admin' ||
+        isAdmin() ||
+        (isSignedIn() && request.auth.token.email == 'omaradelh2004@gmail.com')
+      );
+      allow delete: if isAdmin();
+    }
+
+    // LISTINGS COLLECTION
+    // Public read for marketplace buyers browsing listings
+    // Write and update permitted for marketplace operation
+    match /listings/{listingId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isSignedIn() || isAdmin();
+    }
+
+    // REPORTS COLLECTION
+    // Create for reporting inappropriate listings
+    // Read and moderation accessible
+    match /reports/{reportId} {
+      allow create: if true;
+      allow read, update, delete: if true;
+    }
+
+    // VERIFICATION REQUESTS
+    // Users can submit verification documents, reviewable by administration
+    match /verifications/{verificationId} {
+      allow create: if true;
+      allow read, update, delete: if true;
+    }
+
+    // AUDIT LOGS
+    match /audit_logs/{logId} {
+      allow read, create: if true;
+      allow update, delete: if false; // immutable audit logs
+    }
+
+    // Default deny for everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -196,7 +196,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
             البحث عن الأراضي والمزارع
           </h1>
           <p className="text-sm sm:text-base text-[#527963] mt-1">
-            نتائج تجريبية للبحث في الأراضي الزراعية والمزارع
+            أفضل فرص الأراضي والمزارع الزراعية المتاحة للبيع والإيجار في كافة محافظات مصر
           </p>
         </div>
 

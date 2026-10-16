@@ -29,6 +29,9 @@ import {
   ExternalLink,
   Send,
   Sparkles,
+  Image as ImageIcon,
+  ZoomIn,
+  FileCheck,
 } from 'lucide-react';
 
 interface ListingDetailsModalProps {
@@ -56,6 +59,8 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
   } = useApp();
 
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const [selectedPreviewImage, setSelectedPreviewImage] = useState<string | null>(null);
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
   if (!listing) return null;
 
@@ -105,14 +110,23 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
 
   const waNumber = cleanWhatsAppNumber(profilePhone);
 
-  // إنشاء رابط واتساب التلقائي مع تفاصيل الأرض والرسالة الجاهزة
+  const landUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/#land-${listing.id}`
+      : `https://ardak.eg/land/${listing.id}`;
+
+  // إنشاء رابط واتساب التلقائي مع تفاصيل الأرض والرسالة الجاهزة المطلوبة بدقة
   const buildWhatsAppLink = (inquiryTopic?: string) => {
-    let msg = `السلام عليكم ورحمة الله وبركاته يا ${ownerDisplayName}،\nأنا مهتم بعرض الأرض المعلن على منصة "أرضك":\n📌 *${listing.title}*\n📍 *الموقع:* ${listing.governorate} - ${listing.city}${listing.village ? ` (${listing.village})` : ''}\n💰 *السعر المطلوب:* ${listing.price}\n📐 *المساحة:* ${listing.area} ${listing.areaUnit}`;
+    let msg = `مرحباً، أرغب في الاستفسار عن أرضك المعروضة على منصة أرضك: [${landUrl}]`;
+    msg += `\n\n📌 *تفاصيل الإعلان:* ${listing.title}`;
+    msg += `\n📍 *الموقع:* ${listing.governorate} - ${listing.city}${listing.village ? ` (${listing.village})` : ''}`;
+    msg += `\n💰 *السعر المطلوب:* ${listing.price}`;
+    msg += `\n📐 *المساحة:* ${listing.area} ${listing.areaUnit}`;
 
     if (inquiryTopic) {
       msg += `\n\n💬 *موضوع الاستفسار:* ${inquiryTopic}`;
     } else {
-      msg += `\n\nأود الاستفسار عن تفاصيل إضافية وتحديد موعد لمعاينة الأرض على الطبيعة. هل العرض لا يزال متاحاً؟`;
+      msg += `\n\nأود معرفة تفاصيل إضافية وتحديد موعد لمعاينة الأرض على الطبيعة. هل العرض لا يزال متاحاً؟`;
     }
 
     return `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`;
@@ -188,6 +202,18 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
               </span>
             </button>
 
+            {/* Quick WhatsApp link in modal header */}
+            <a
+              href={buildWhatsAppLink()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1.5 rounded-xl bg-[#25d366] hover:bg-[#20ba59] text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs hover:shadow transition-all cursor-pointer"
+              title="تواصل عبر واتساب مباشرة مع صاحب الإعلان"
+            >
+              <MessageCircle className="w-4 h-4 fill-white" />
+              <span className="hidden sm:inline">واتساب</span>
+            </a>
+
             {/* Favorite toggle */}
             <button
               type="button"
@@ -254,6 +280,62 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
               {listing.title}
             </h2>
           </div>
+
+          {/* معرض صور الأرض والمزرعة المرفوعة من الجهاز */}
+          {listing.customImages && listing.customImages.length > 0 && (
+            <div className="space-y-2 bg-[#fcfdfc] p-3.5 rounded-2xl border border-[#e2eae5]">
+              <div className="flex items-center justify-between text-xs font-bold text-[#14281d]">
+                <div className="flex items-center gap-1.5 text-[#166534]">
+                  <ImageIcon className="w-4 h-4 text-[#16a34a]" />
+                  <span>صور الأرض الحية (مرفوعة من صاحب الإعلان)</span>
+                </div>
+                <span className="text-[11px] text-[#527963]">
+                  {listing.customImages.length} صور متوفرة
+                </span>
+              </div>
+
+              {/* Main photo */}
+              <div className="relative rounded-xl overflow-hidden aspect-video max-h-72 bg-black/5 group">
+                <img
+                  src={listing.customImages[activePhotoIdx] || listing.customImages[0]}
+                  alt="صورة الأرض"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedPreviewImage(
+                      listing.customImages![activePhotoIdx] || listing.customImages![0]
+                    )
+                  }
+                  className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-black/70 hover:bg-black text-white text-xs font-bold flex items-center gap-1.5 backdrop-blur-xs transition-colors cursor-pointer"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                  <span>تكبير الصورة</span>
+                </button>
+              </div>
+
+              {/* Thumbnails */}
+              {listing.customImages.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
+                  {listing.customImages.map((img, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActivePhotoIdx(idx)}
+                      className={`relative w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                        activePhotoIdx === idx
+                          ? 'border-[#166534] shadow-xs'
+                          : 'border-transparent opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={img} alt={`مصغرة ${idx + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Pricing & Area Banner */}
           <div className="bg-[#f7faf8] rounded-xl p-4 border border-[#e2eae5] space-y-3">
@@ -420,7 +502,7 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#25d366] hover:bg-[#20ba59] text-white text-xs font-black shadow-sm hover:shadow transition-all cursor-pointer active:scale-95"
                 >
                   <MessageCircle className="w-4 h-4 fill-white" />
-                  <span>فتح واتساب الآن</span>
+                  <span>تواصل عبر واتساب</span>
                   <ExternalLink className="w-3 h-3 opacity-90" />
                 </a>
               </div>
@@ -613,6 +695,42 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* معرض صور الأوراق والمستندات الرسمية المرفوعة */}
+                {listing.documentImages && listing.documentImages.length > 0 && (
+                  <div className="pt-2 border-t border-[#edf3ef] mt-2">
+                    <span className="text-[#374151] font-bold block mb-1.5 flex items-center gap-1.5 text-xs">
+                      <FileCheck className="w-4 h-4 text-[#16a34a]" />
+                      <span>صور الأوراق والمستندات المرفوعة من صاحب الإعلان ({listing.documentImages.length}):</span>
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {listing.documentImages.map((docImg, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setSelectedPreviewImage(docImg)}
+                          className="group relative rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] p-1.5 overflow-hidden cursor-pointer hover:border-[#16a34a] transition-all shadow-2xs hover:shadow-xs"
+                        >
+                          <div className="aspect-4/3 rounded-lg overflow-hidden bg-white relative">
+                            <img
+                              src={docImg}
+                              alt={`مستند رسمي ${idx + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <span className="text-[10px] text-white font-bold bg-black/70 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                <ZoomIn className="w-3 h-3" />
+                                <span>تكبير المستند</span>
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-[#166534] font-bold block text-center mt-1 truncate">
+                            مستند رسمي #{idx + 1}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -664,7 +782,7 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2.5 rounded-xl bg-[#25d366] hover:bg-[#20ba59] text-white font-bold text-xs shadow-xs hover:shadow transition-all cursor-pointer"
             >
               <MessageCircle className="w-4 h-4 fill-white" />
-              <span>محادثة واتساب سريعة</span>
+              <span>تواصل عبر واتساب</span>
             </a>
 
             <a
@@ -677,6 +795,33 @@ export const ListingDetailsModal: React.FC<ListingDetailsModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* نافذة تكبير ومعاينة الصورة كاملة (Lightbox) */}
+      {selectedPreviewImage && (
+        <div
+          className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setSelectedPreviewImage(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[92vh] bg-white rounded-2xl overflow-hidden shadow-2xl p-2.5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedPreviewImage(null)}
+              className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-black/75 hover:bg-black text-white flex items-center justify-center cursor-pointer transition-colors shadow-md"
+              title="إغلاق المعاينة"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={selectedPreviewImage}
+              alt="معاينة المستند أو الصورة كاملة"
+              className="max-h-[82vh] w-auto max-w-full rounded-xl object-contain mx-auto"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

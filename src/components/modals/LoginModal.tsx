@@ -52,7 +52,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               <div className="w-12 h-12 rounded-full bg-[#dcfce7] text-[#166534] flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-bold text-[#14281d]">تم تسجيل الدخول بنجاح (نسخة تجريبية)</h3>
+              <h3 className="text-base font-bold text-[#14281d]">تم تسجيل الدخول بنجاح</h3>
               <p className="text-xs text-[#527963]">
                 مرحباً بك في منصة أرضك.
               </p>

@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
-import { X, Sprout, CheckCircle2, ArrowRight } from 'lucide-react';
+import {
+  X,
+  Sprout,
+  CheckCircle2,
+  ArrowRight,
+  Upload,
+  Image as ImageIcon,
+  FileText,
+  Trash2,
+  ShieldCheck,
+  Plus,
+  Camera,
+} from 'lucide-react';
 import { egyptianGovernorates } from '../../data/listings.ts';
 import { useApp } from '../../context/AppContext.tsx';
 import {
@@ -79,10 +91,50 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
   );
   const [description, setDescription] = useState('');
 
+  // صور الأرض وصور المستندات المرفوعة من الجهاز
+  const [customImages, setCustomImages] = useState<string[]>([]);
+  const [documentImages, setDocumentImages] = useState<string[]>([]);
+
   const [submitted, setSubmitted] = useState(false);
   const [createdId, setCreatedId] = useState('');
 
   if (!isOpen) return null;
+
+  const handleLandImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setCustomImages((prev) => [...prev, reader.result as string]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleDocImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setDocumentImages((prev) => [...prev, reader.result as string]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeCustomImage = (idx: number) => {
+    setCustomImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const removeDocImage = (idx: number) => {
+    setDocumentImages((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,6 +189,8 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
       legalStatus: ownershipType,
       ownershipType,
       documentsAvailable: [ownershipType, 'خريطة مساحية معتمدة'],
+      customImages: customImages.length > 0 ? customImages : undefined,
+      documentImages: documentImages.length > 0 ? documentImages : undefined,
       contactPhone: contactPhone || '01012345671',
       whatsappNumber: whatsappNumber || '201012345671',
       description,
@@ -574,6 +628,113 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full bg-[#fbfdfb] border border-[#d1d5db] focus:border-[#166534] rounded-xl p-3 text-xs outline-hidden resize-none"
                 />
+              </div>
+
+              {/* قسم 1: رفع صور الأرض والمزرعة من جهازك */}
+              <div className="bg-[#f0fdf4] p-3.5 rounded-2xl border border-[#bbf7d0] space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#166534]">
+                    <Camera className="w-4 h-4 text-[#16a34a]" />
+                    <span>رفع صور الأرض والمزرعة من جهازك</span>
+                  </div>
+                  <span className="text-[11px] text-[#527963]">
+                    {customImages.length} صور مختارة
+                  </span>
+                </div>
+
+                <label className="border-2 border-dashed border-[#86efac] hover:border-[#166534] bg-white rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-colors group">
+                  <Upload className="w-5 h-5 text-[#16a34a] group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-bold text-[#166534]">
+                    اضغط لاختيار صور الأرض من الهاتف أو الكمبيوتر
+                  </span>
+                  <span className="text-[10px] text-[#6b7280]">
+                    يدعم صور متعددة (JPG, PNG, WebP)
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleLandImagesUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* Previews */}
+                {customImages.length > 0 && (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+                    {customImages.map((img, idx) => (
+                      <div
+                        key={idx}
+                        className="relative group rounded-xl overflow-hidden aspect-square border border-[#86efac] shadow-2xs"
+                      >
+                        <img src={img} alt={`صورة ${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeCustomImage(idx)}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center opacity-90 hover:opacity-100 transition-opacity cursor-pointer shadow-xs"
+                          title="حذف الصورة"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* قسم 2: رفع صور الأوراق والمستندات القانونية */}
+              <div className="bg-[#f0f9ff] p-3.5 rounded-2xl border border-[#bae6fd] space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#0369a1]">
+                    <FileText className="w-4 h-4 text-[#0284c7]" />
+                    <span>رفع صور الأوراق والمستندات القانونية (عقود، كشوف مساحية، إيصالات)</span>
+                  </div>
+                  <span className="text-[11px] text-[#0369a1]">
+                    {documentImages.length} مستندات
+                  </span>
+                </div>
+
+                <label className="border-2 border-dashed border-[#7dd3fc] hover:border-[#0284c7] bg-white rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-colors group">
+                  <ShieldCheck className="w-5 h-5 text-[#0284c7] group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-bold text-[#0284c7]">
+                    اضغط لرفع صور العقود والأوراق الرسمية من جهازك
+                  </span>
+                  <span className="text-[10px] text-[#6b7280]">
+                    عقد مسجل، بطاقة حيازة، كشف تحديد، إيصال تقنين
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    multiple
+                    onChange={handleDocImagesUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* Doc Previews */}
+                {documentImages.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                    {documentImages.map((doc, idx) => (
+                      <div
+                        key={idx}
+                        className="relative group rounded-xl overflow-hidden aspect-4/3 border border-[#7dd3fc] bg-white p-1 shadow-2xs"
+                      >
+                        <img src={doc} alt={`مستند ${idx + 1}`} className="w-full h-full object-cover rounded-lg" />
+                        <span className="absolute bottom-1 right-1 left-1 bg-black/60 text-white text-[9px] font-bold text-center py-0.5 rounded px-1 truncate">
+                          مستند رسمي #{idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeDocImage(idx)}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center opacity-90 hover:opacity-100 transition-opacity cursor-pointer shadow-xs"
+                          title="حذف المستند"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-2">

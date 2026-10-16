@@ -34,7 +34,13 @@ import {
   BarChart3,
   Sliders,
   Sparkles,
+  UserPlus,
+  Key,
+  Crown,
+  Plus,
+  ShieldAlert,
 } from 'lucide-react';
+import { ArdakLogoIcon } from '../common/ArdakLogo.tsx';
 
 interface AdminDashboardProps {
   onNavigateHome: () => void;
@@ -65,6 +71,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     reports,
     users,
     verificationRequests,
+    isFirebaseConnected,
+    currentUser,
     approveListing,
     rejectListing,
     deleteListing,
@@ -74,6 +82,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     rejectVerification,
     toggleUserBlock,
     deleteUser,
+    addAdmin,
+    updateUserRole,
+    updateUserPasswordByAdmin,
+    toggleListingVerification,
+    resetAllPlatformDataToZero,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('pending');
@@ -84,12 +97,114 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Sold Transactions confidential view toggle
   const [showConfidentialDetails, setShowConfidentialDetails] = useState(true);
 
+  // User Management State
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'user' | 'agent' | 'company'>('all');
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminPhone, setNewAdminPhone] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('2004103Om@');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminGov, setNewAdminGov] = useState('القاهرة');
+  const [adminActionNotice, setAdminActionNotice] = useState<string | null>(null);
+
+  // Password Reset Modal State
+  const [resetTargetUser, setResetTargetUser] = useState<User | null>(null);
+  const [customPasswordInput, setCustomPasswordInput] = useState('');
+
   // Calculations
   const pendingListings = listings.filter((item) => item.status === 'pending_approval');
   const publishedListings = listings.filter((item) => item.status === 'published');
   const pendingReports = reports.filter((r) => r.status === 'pending');
   const pendingVerifications = verificationRequests.filter((v) => v.status === 'pending');
   const companyUsers = users.filter((u) => u.role === 'company' || u.companyProfile);
+  const adminUsers = users.filter((u) => u.role === 'admin');
+  const agentUsers = users.filter((u) => u.role === 'agent');
+  const regularUsers = users.filter((u) => u.role === 'user' || (!u.role && !u.companyProfile));
+
+  const seenUserIds = new Set<string>();
+  const filteredUsers = users.filter((u) => {
+    if (!u || !u.id) return false;
+    if (seenUserIds.has(u.id)) return false;
+    seenUserIds.add(u.id);
+
+    if (userRoleFilter === 'admin') {
+      if (u.role !== 'admin') return false;
+    } else if (userRoleFilter === 'company') {
+      if (u.role !== 'company' && !u.companyProfile) return false;
+    } else if (userRoleFilter === 'agent') {
+      if (u.role !== 'agent') return false;
+    } else if (userRoleFilter === 'user') {
+      if (u.role === 'admin' || u.role === 'company' || u.role === 'agent') return false;
+    }
+
+    if (userSearchQuery.trim()) {
+      const q = userSearchQuery.trim().toLowerCase();
+      const matchName = u.name.toLowerCase().includes(q);
+      const matchPhone = u.phone.includes(q);
+      const matchEmail = u.email?.toLowerCase().includes(q) || false;
+      return matchName || matchPhone || matchEmail;
+    }
+    return true;
+  });
+
+  const handleCreateAdmin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminPhone || newAdminPhone.length < 10) {
+      setAdminActionNotice('يرجى إدخال رقم هاتف صحيح للمسؤول (11 رقماً).');
+      return;
+    }
+    const res = addAdmin({
+      name: newAdminName.trim() || 'مسؤول المنصة',
+      phone: newAdminPhone.trim(),
+      password: newAdminPassword.trim() || '2004103Om@',
+      email: newAdminEmail.trim() || undefined,
+      governorate: newAdminGov,
+    });
+    setAdminActionNotice(res.message);
+    if (res.success) {
+      setIsAddAdminOpen(false);
+      setNewAdminName('');
+      setNewAdminPhone('');
+      setNewAdminPassword('2004103Om@');
+      setNewAdminEmail('');
+      setTimeout(() => setAdminActionNotice(null), 4500);
+    }
+  };
+
+  const handlePromoteToAdmin = (targetUser: User) => {
+    if (window.confirm(`هل أنت متأكد من ترقية "${targetUser.name}" (${targetUser.phone}) إلى رتبة مسؤول (أدمن)؟ سيكون له كامل الصلاحيات لإدارة الموقع.`)) {
+      updateUserRole(targetUser.id, 'admin');
+      setAdminActionNotice(`تمت ترقية "${targetUser.name}" إلى مسؤول (أدمن) بنجاح.`);
+      setTimeout(() => setAdminActionNotice(null), 4500);
+    }
+  };
+
+  const handleDemoteAdmin = (targetUser: User) => {
+    if (targetUser.phone === '01028200048') {
+      alert('لا يمكن إلغاء صلاحية المدير العام الرئيسي للحساب 01028200048.');
+      return;
+    }
+    if (window.confirm(`هل أنت متأكد من سحب صلاحية الأدمن من "${targetUser.name}" وتحويله لمستخدم عادي؟`)) {
+      updateUserRole(targetUser.id, 'user');
+      setAdminActionNotice(`تم سحب صلاحيات الأدمن من "${targetUser.name}".`);
+      setTimeout(() => setAdminActionNotice(null), 4500);
+    }
+  };
+
+  const handleSavePasswordReset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTargetUser) return;
+    if (!customPasswordInput || customPasswordInput.length < 6) {
+      alert('كلمة المرور يجب ألا تقل عن 6 خانات.');
+      return;
+    }
+    const res = updateUserPasswordByAdmin(resetTargetUser.id, customPasswordInput);
+    setAdminActionNotice(res.message);
+    setResetTargetUser(null);
+    setCustomPasswordInput('');
+    setTimeout(() => setAdminActionNotice(null), 4500);
+  };
 
   const handleConfirmReject = (id: string) => {
     rejectListing(id, rejectReason.trim() || 'بيانات أو أوراق غير مطابقة لشروط النشر');
@@ -103,7 +218,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       id: 'log-1',
       action: 'اعتماد ونشر إعلان',
       target: 'أرض زراعية 10 فدان بوادي النطرون',
-      admin: 'م. عادل إبراهيم',
+      admin: 'المدير العام (01028200048)',
       time: 'منذ 15 دقيقة',
       status: 'نجاح',
     },
@@ -111,7 +226,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       id: 'log-2',
       action: 'توثيق شركة أعمال (🔵 شركة موثقة)',
       target: 'شركة النيل للاستثمار الزراعي',
-      admin: 'م. عادل إبراهيم',
+      admin: 'المدير العام (01028200048)',
       time: 'منذ ساعتين',
       status: 'نجاح',
     },
@@ -127,7 +242,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       id: 'log-4',
       action: 'تجميد حساب لمخالفة سياسة الاتصال',
       target: 'مستخدم هاتف 01155443322',
-      admin: 'م. عادل إبراهيم',
+      admin: 'المدير العام (01028200048)',
       time: 'منذ يومين',
       status: 'محظور',
     },
@@ -158,8 +273,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* Admin Header */}
         <div className="bg-white rounded-2xl border border-[#e2eae5] p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#166534] text-white flex items-center justify-center shadow-md">
-              <Shield className="w-6 h-6" />
+            <div className="w-13 h-13 rounded-2xl bg-[#f7f9f8] p-1.5 flex items-center justify-center border border-[#e2eae5] shadow-xs shrink-0 relative">
+              <ArdakLogoIcon className="w-10 h-10" />
+              <div className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full bg-[#166534] text-white flex items-center justify-center text-[10px] shadow-xs">
+                <Shield className="w-3 h-3" />
+              </div>
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -176,10 +294,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
             <span className="text-xs text-[#527963]">
-              المسؤول الحالي: <strong>م. عادل إبراهيم</strong>
+              المسؤول الحالي:{' '}
+              <strong className="text-[#14281d]">
+                {currentUser?.name || 'المدير العام'} ({currentUser?.phone || '01028200048'})
+              </strong>
             </span>
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                isFirebaseConnected
+                  ? 'bg-[#f0fdf4] text-[#166534] border-[#86efac]'
+                  : 'bg-[#fefce8] text-[#854d0e] border-[#fde047]'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${isFirebaseConnected ? 'bg-[#16a34a]' : 'bg-[#eab308] animate-ping'}`} />
+              <span>{isFirebaseConnected ? 'السحابة متصلة ونشطة ✓' : 'جاري المزامنة السحابية'}</span>
+            </span>
+
+            {/* Zero Platform Data Action */}
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('هل أنت متأكد من رغبتك في تصفير الموقع وحذف كافة البيانات التجريبية؟')) {
+                  resetAllPlatformDataToZero();
+                  setAdminActionNotice('تم تصفير الموقع بالكامل وحذف كافة البيانات التجريبية! المنصة الآن نظيفة وجاهزة تماماً.');
+                  setTimeout(() => setAdminActionNotice(null), 5000);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-red-50 hover:bg-red-100 text-[#dc2626] border border-red-200 text-xs font-bold transition-colors cursor-pointer"
+              title="تصفير وحذف كافة البيانات التجريبية"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>تصفير البيانات التجريبية</span>
+            </button>
           </div>
         </div>
 
@@ -240,7 +388,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              <span>المستخدمون ({users.length})</span>
+              <span>المستخدمون والمسؤولون ({users.length})</span>
             </button>
 
             <button
@@ -458,25 +606,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       {l.area} {l.areaUnit} · {l.governorate} ({l.city}) · {l.price} · المعلن: {l.ownerName}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
                       type="button"
                       onClick={() => onViewDetails(l)}
-                      className="px-2.5 py-1 rounded bg-[#f0fdf4] text-[#166534] font-bold cursor-pointer"
+                      className="px-2.5 py-1 rounded bg-[#f0fdf4] text-[#166534] font-bold cursor-pointer hover:bg-[#dcfce7]"
                     >
                       معاينة
                     </button>
                     <button
                       type="button"
+                      onClick={() => toggleListingVerification(l.id)}
+                      className={`px-2.5 py-1 rounded font-bold cursor-pointer transition-colors ${
+                        l.isVerified
+                          ? 'bg-[#dbeafe] text-[#1e40af] hover:bg-[#bfdbfe]'
+                          : 'bg-[#f3f4f6] text-[#4b5563] hover:bg-[#e5e7eb]'
+                      }`}
+                      title={l.isVerified ? 'إلغاء علامة التوثيق' : 'توثيق الإعلان رسمياً'}
+                    >
+                      {l.isVerified ? 'موثق ✓' : 'توثيق'}
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => onEditListing(l)}
-                      className="px-2.5 py-1 rounded bg-white border border-[#d1d5db] font-bold cursor-pointer"
+                      className="px-2.5 py-1 rounded bg-white border border-[#d1d5db] font-bold cursor-pointer hover:bg-[#f9fafb]"
                     >
                       تعديل
                     </button>
                     <button
                       type="button"
                       onClick={() => toggleListingStatus(l.id)}
-                      className="px-2.5 py-1 rounded bg-[#f3f4f6] font-bold cursor-pointer"
+                      className="px-2.5 py-1 rounded bg-[#f3f4f6] font-bold cursor-pointer hover:bg-[#e5e7eb]"
                     >
                       {l.status === 'published' ? 'إيقاف' : 'نشر'}
                     </button>
@@ -484,6 +644,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       type="button"
                       onClick={() => deleteListing(l.id)}
                       className="p-1 text-[#dc2626] hover:bg-[#fee2e2] rounded cursor-pointer"
+                      title="حذف الإعلان"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -599,77 +760,493 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* TAB 4: USERS MANAGEMENT */}
+        {/* TAB 4: USERS & ADMINS MANAGEMENT */}
         {activeTab === 'users' && (
-          <div className="bg-white rounded-2xl border border-[#e2eae5] p-5 sm:p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-[#edf3ef] pb-3">
+          <div className="bg-white rounded-2xl border border-[#e2eae5] p-5 sm:p-6 shadow-2xs space-y-5">
+            {/* Action Notice Alert */}
+            {adminActionNotice && (
+              <div className="p-3.5 bg-[#f0fdf4] border border-[#86efac] text-[#166534] rounded-xl text-xs font-bold flex items-center justify-between animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#16a34a]" />
+                  <span>{adminActionNotice}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAdminActionNotice(null)}
+                  className="text-xs text-[#527963] hover:text-[#166534] cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Header & Add Admin Action */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#edf3ef] pb-4">
               <div>
-                <h2 className="text-base font-black text-[#14281d]">
-                  قائمة المستخدمين المسجلين ({users.length})
-                </h2>
-                <p className="text-xs text-[#527963]">
-                  إدارة أدوار المستخدمين وتجميد الحسابات المخالفة.
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-[#166534]" />
+                  <h2 className="text-base sm:text-lg font-black text-[#14281d]">
+                    إدارة المستخدمين وطاقم الإدارة (Admins)
+                  </h2>
+                </div>
+                <p className="text-xs text-[#527963] mt-0.5">
+                  التحكم في كافة الحسابات، ترقية وتعيين مسؤولين جدد لمشاركة إدارة المنصة، وتعيين كلمات المرور.
                 </p>
+              </div>
+
+              {/* Add New Admin Button */}
+              <button
+                type="button"
+                onClick={() => setIsAddAdminOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#166534] hover:bg-[#14532d] text-white font-bold text-xs shadow-sm transition-all cursor-pointer self-start sm:self-auto"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>+ إضافة مسؤول جديد (أدمن)</span>
+              </button>
+            </div>
+
+            {/* Stats Metrics Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+              <div className="bg-[#fcfdfc] border border-[#e2eae5] p-3 rounded-xl">
+                <span className="text-[11px] text-[#6b7280] block">إجمالي المسجلين</span>
+                <span className="text-lg font-black text-[#14281d]">{users.length}</span>
+              </div>
+              <div className="bg-[#fef2f2] border border-[#fecaca] p-3 rounded-xl">
+                <span className="text-[11px] text-[#b91c1c] block font-bold">المسؤولون (Admins)</span>
+                <span className="text-lg font-black text-[#dc2626]">{adminUsers.length}</span>
+              </div>
+              <div className="bg-[#eff6ff] border border-[#bfdbfe] p-3 rounded-xl">
+                <span className="text-[11px] text-[#1e40af] block">الشركات العقارية</span>
+                <span className="text-lg font-black text-[#2563eb]">{companyUsers.length}</span>
+              </div>
+              <div className="bg-[#f0fdf4] border border-[#bbf7d0] p-3 rounded-xl">
+                <span className="text-[11px] text-[#166534] block">الوسطاء والوكلاء</span>
+                <span className="text-lg font-black text-[#166534]">{agentUsers.length}</span>
+              </div>
+              <div className="bg-[#f9fafb] border border-[#e5e7eb] p-3 rounded-xl">
+                <span className="text-[11px] text-[#4b5563] block">الملاك والباحثون</span>
+                <span className="text-lg font-black text-[#374151]">{regularUsers.length}</span>
               </div>
             </div>
 
-            <div className="space-y-3">
-              {users.map((u) => (
-                <div
-                  key={u.id}
-                  className="p-3.5 rounded-xl border border-[#e2eae5] bg-[#fcfdfc] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+            {/* Search & Filter Controls */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+              {/* Role Filter Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setUserRoleFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+                    userRoleFilter === 'all'
+                      ? 'bg-[#166534] text-white'
+                      : 'bg-[#f3f4f6] text-[#4b5563] hover:bg-[#e5e7eb]'
+                  }`}
                 >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-sm text-[#14281d]">{u.name}</h4>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#f3f6f4] text-[#374151]">
-                        {u.role === 'admin'
-                          ? '🛡️ Admin'
-                          : u.role === 'company'
-                          ? '🏗️ شركة'
-                          : u.role === 'agent'
-                          ? '🏢 وكيل'
-                          : '👤 مستخدم'}
-                      </span>
-                      <span className="text-[10px] font-bold text-[#166534]">
-                        {u.verificationLevel === 'verified_company'
-                          ? '🔵 شركة موثقة'
-                          : u.verificationLevel === 'verified_user'
-                          ? '🔵 حساب موثق'
-                          : '🟢 عضو عادي'}
-                      </span>
-                    </div>
-                    <span className="text-[#527963] text-[11px]">
-                      الهاتف: {u.phone} · المحافظة: {u.governorate || 'البحيرة'} · انضم في: {u.joinedAt}
-                    </span>
-                  </div>
+                  الكل ({users.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUserRoleFilter('admin')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+                    userRoleFilter === 'admin'
+                      ? 'bg-[#dc2626] text-white'
+                      : 'bg-[#fee2e2] text-[#dc2626] hover:bg-[#fecaca]'
+                  }`}
+                >
+                  المسؤولون 🛡️ ({adminUsers.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUserRoleFilter('company')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+                    userRoleFilter === 'company'
+                      ? 'bg-[#2563eb] text-white'
+                      : 'bg-[#eff6ff] text-[#1d4ed8] hover:bg-[#dbeafe]'
+                  }`}
+                >
+                  الشركات ({companyUsers.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUserRoleFilter('agent')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+                    userRoleFilter === 'agent'
+                      ? 'bg-[#166534] text-white'
+                      : 'bg-[#f0fdf4] text-[#166534] hover:bg-[#dcfce7]'
+                  }`}
+                >
+                  الوكلاء ({agentUsers.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUserRoleFilter('user')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+                    userRoleFilter === 'user'
+                      ? 'bg-[#374151] text-white'
+                      : 'bg-[#f3f4f6] text-[#4b5563] hover:bg-[#e5e7eb]'
+                  }`}
+                >
+                  المستخدمون ({regularUsers.length})
+                </button>
+              </div>
 
-                  <div className="flex items-center gap-2">
-                    {u.role !== 'admin' && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => toggleUserBlock(u.id)}
-                          className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${
-                            u.status === 'blocked'
-                              ? 'bg-[#dcfce7] text-[#166534]'
-                              : 'bg-[#fee2e2] text-[#dc2626]'
-                          }`}
-                        >
-                          {u.status === 'blocked' ? 'إلغاء الحظر' : 'حظر الحساب'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteUser(u.id)}
-                          className="p-1 text-[#dc2626] hover:bg-[#fee2e2] rounded cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
+              {/* Search Box */}
+              <div className="relative min-w-[220px]">
+                <Search className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af]" />
+                <input
+                  type="text"
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  placeholder="بحث بالاسم أو الهاتف..."
+                  className="w-full pl-3 pr-8 py-1.5 text-xs border border-[#d1d5db] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#166534]"
+                />
+              </div>
+            </div>
+
+            {/* Users & Admins List */}
+            <div className="space-y-3">
+              {filteredUsers.length === 0 ? (
+                <div className="text-center py-8 text-xs text-[#6b7280]">
+                  لا توجد حسابات مطابقة لمعايير البحث.
+                </div>
+              ) : (
+                filteredUsers.map((u, userIndex) => {
+                  const isSuperAdmin = u.phone === '01028200048';
+                  const isAdmin = u.role === 'admin';
+
+                  return (
+                    <div
+                      key={`${u.id || 'usr'}-${userIndex}`}
+                      className={`p-4 rounded-xl border transition-all text-xs flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                        isSuperAdmin
+                          ? 'border-[#f59e0b] bg-[#fffbeb]/60 shadow-xs'
+                          : isAdmin
+                          ? 'border-[#fca5a5] bg-[#fef2f2]/40'
+                          : 'border-[#e2eae5] bg-[#fcfdfc]'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-black text-sm text-[#14281d] flex items-center gap-1.5">
+                            {isSuperAdmin && <Crown className="w-4 h-4 text-[#d97706]" />}
+                            <span>{u.name}</span>
+                          </h4>
+
+                          {/* Role Badges */}
+                          {isSuperAdmin ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-[#fef3c7] text-[#b45309] border border-[#fde68a] flex items-center gap-1">
+                              <span>👑 المدير العام الرئيسي (سوبر أدمن)</span>
+                            </span>
+                          ) : isAdmin ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#fee2e2] text-[#dc2626] border border-[#fca5a5] flex items-center gap-1">
+                              <Shield className="w-3 h-3" />
+                              <span>مسؤول معتمد (Admin)</span>
+                            </span>
+                          ) : u.role === 'company' || u.companyProfile ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#eff6ff] text-[#1d4ed8]">
+                              🏗️ شركة استثمار
+                            </span>
+                          ) : u.role === 'agent' ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#f0fdf4] text-[#166534]">
+                              🏢 وسيط معتمد
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#f3f4f6] text-[#374151]">
+                              👤 مستخدم / مالك
+                            </span>
+                          )}
+
+                          {/* Verification Level Badge */}
+                          <span className="text-[10px] font-bold text-[#166534]">
+                            {u.verificationLevel === 'verified_company'
+                              ? '🔵 شركة موثقة'
+                              : u.verificationLevel === 'verified_user'
+                              ? '🔵 حساب موثق'
+                              : '🟢 عضو عادي'}
+                          </span>
+
+                          {/* Status Badge */}
+                          {u.status === 'blocked' && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#fee2e2] text-[#dc2626]">
+                              محظور
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 text-[#527963] text-[11px] flex-wrap">
+                          <span>الهاتف: <strong className="text-[#14281d] font-sans" dir="ltr">{u.phone}</strong></span>
+                          {u.email && <span>البريد: {u.email}</span>}
+                          <span>المحافظة: {u.governorate || 'القاهرة'}</span>
+                          <span>تاريخ الانضمام: {u.joinedAt}</span>
+                          {u.password && (
+                            <span className="text-[#6b7280]">
+                              كلمة المرور: <span className="font-mono bg-white px-1 py-0.5 rounded border border-gray-200">{u.password}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Management Action Buttons */}
+                      <div className="flex items-center gap-1.5 flex-wrap self-start md:self-auto">
+                        {/* Super Admin Tag vs Regular Admin Controls */}
+                        {isSuperAdmin ? (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setResetTargetUser(u)}
+                              className="px-2.5 py-1.5 rounded-lg bg-white border border-[#d97706]/40 hover:bg-[#fef3c7] text-[#92400e] text-xs font-bold cursor-pointer transition-colors flex items-center gap-1"
+                            >
+                              <Key className="w-3.5 h-3.5" />
+                              <span>تغيير كلمة المرور</span>
+                            </button>
+                            <span className="px-2.5 py-1 text-[11px] font-bold text-[#b45309] bg-[#fef3c7] rounded-lg border border-[#fde68a]">
+                              حساب محمي دائم
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Promote / Demote Admin Buttons */}
+                            {isAdmin ? (
+                              <button
+                                type="button"
+                                onClick={() => handleDemoteAdmin(u)}
+                                className="px-2.5 py-1.5 rounded-lg bg-[#fef2f2] text-[#b91c1c] hover:bg-[#fee2e2] font-bold text-xs cursor-pointer transition-colors"
+                                title="إلغاء صلاحية الأدمن وتحويله لمستخدم عادي"
+                              >
+                                سحب صلاحية الأدمن
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handlePromoteToAdmin(u)}
+                                className="px-2.5 py-1.5 rounded-lg bg-[#f0fdf4] text-[#166534] hover:bg-[#dcfce7] border border-[#bbf7d0] font-bold text-xs cursor-pointer transition-colors flex items-center gap-1"
+                                title="ترقية الحساب ليكون مسؤولاً في إدارة الموقع"
+                              >
+                                <Shield className="w-3.5 h-3.5" />
+                                <span>ترقية إلى أدمن</span>
+                              </button>
+                            )}
+
+                            {/* Reset Password */}
+                            <button
+                              type="button"
+                              onClick={() => setResetTargetUser(u)}
+                              className="px-2 py-1.5 rounded-lg bg-white border border-[#d1d5db] hover:bg-[#f9fafb] text-[#374151] font-bold text-xs cursor-pointer transition-colors flex items-center gap-1"
+                              title="تحديد أو تغيير كلمة المرور للمستخدم"
+                            >
+                              <Key className="w-3.5 h-3.5 text-[#6b7280]" />
+                              <span>كلمة المرور</span>
+                            </button>
+
+                            {/* Block / Unblock */}
+                            <button
+                              type="button"
+                              onClick={() => toggleUserBlock(u.id)}
+                              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                                u.status === 'blocked'
+                                  ? 'bg-[#dcfce7] text-[#166534] hover:bg-[#bbf7d0]'
+                                  : 'bg-[#fee2e2] text-[#dc2626] hover:bg-[#fecaca]'
+                              }`}
+                            >
+                              {u.status === 'blocked' ? 'إلغاء الحظر' : 'حظر'}
+                            </button>
+
+                            {/* Delete User */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`هل أنت متأكد من حذف حساب "${u.name}" نهائياً من الموقع؟`)) {
+                                  deleteUser(u.id);
+                                }
+                              }}
+                              className="p-1.5 text-[#dc2626] hover:bg-[#fee2e2] rounded-lg cursor-pointer transition-colors"
+                              title="حذف الحساب نهائياً"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: ADD NEW ADMIN */}
+        {isAddAdminOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div
+              className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-[#e2eae5] relative animate-in zoom-in-95 duration-200 p-6 space-y-4 text-right"
+              dir="rtl"
+            >
+              <div className="flex items-center justify-between border-b border-[#edf3ef] pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-[#166534] text-white flex items-center justify-center font-bold">
+                    <UserPlus className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base text-[#14281d]">إضافة مسؤول جديد للمنصة (أدمن)</h3>
+                    <p className="text-[11px] text-[#527963]">سيكون للمسؤول صلاحيات كاملة لإدارة المنصة</p>
                   </div>
                 </div>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setIsAddAdminOpen(false)}
+                  className="w-8 h-8 rounded-lg hover:bg-[#f3f4f6] text-[#6b7280] flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateAdmin} className="space-y-3.5 text-xs">
+                <div>
+                  <label className="block font-bold text-[#14281d] mb-1">اسم المسؤول بالكامل *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newAdminName}
+                    onChange={(e) => setNewAdminName(e.target.value)}
+                    placeholder="مثال: م. محمود السيد (إدارة المنصة)"
+                    className="w-full px-3 py-2 border border-[#d1d5db] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#166534]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#14281d] mb-1">رقم الهاتف المصري * (اسم المستخدم للدخول)</label>
+                  <input
+                    type="tel"
+                    required
+                    value={newAdminPhone}
+                    onChange={(e) => setNewAdminPhone(e.target.value)}
+                    placeholder="مثال: 010xxxxxxxx"
+                    className="w-full px-3 py-2 border border-[#d1d5db] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#166534] font-sans"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#14281d] mb-1">كلمة المرور للمسؤول *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newAdminPassword}
+                    onChange={(e) => setNewAdminPassword(e.target.value)}
+                    placeholder="كلمة المرور"
+                    className="w-full px-3 py-2 border border-[#d1d5db] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#166534] font-mono"
+                    dir="ltr"
+                  />
+                  <span className="text-[10px] text-[#527963] mt-0.5 block">
+                    يمكن استخدام كلمة المرور الافتراضية <strong>2004103Om@</strong> أو كتابة كلمة مرور جديدة.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#14281d] mb-1">المحافظة</label>
+                  <select
+                    value={newAdminGov}
+                    onChange={(e) => setNewAdminGov(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#d1d5db] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#166534]"
+                  >
+                    {egyptianGovernorates.map((gov) => (
+                      <option key={gov} value={gov}>
+                        {gov}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#14281d] mb-1">البريد الإلكتروني (اختياري)</label>
+                  <input
+                    type="email"
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                    placeholder="admin2@ardak.eg"
+                    className="w-full px-3 py-2 border border-[#d1d5db] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#166534]"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddAdminOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-[#f3f4f6] text-[#4b5563] font-bold cursor-pointer hover:bg-[#e5e7eb]"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-[#166534] hover:bg-[#14532d] text-white font-bold cursor-pointer shadow-sm"
+                  >
+                    إضافة المسؤول وتفعيله ✓
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: RESET PASSWORD */}
+        {resetTargetUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div
+              className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl border border-[#e2eae5] relative animate-in zoom-in-95 duration-200 p-5 space-y-4 text-right"
+              dir="rtl"
+            >
+              <div className="flex items-center justify-between border-b border-[#edf3ef] pb-3">
+                <div className="flex items-center gap-2">
+                  <Key className="w-5 h-5 text-[#166534]" />
+                  <h3 className="font-bold text-sm text-[#14281d]">
+                    تعيين كلمة مرور لـ {resetTargetUser.name}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setResetTargetUser(null)}
+                  className="w-7 h-7 rounded-lg hover:bg-[#f3f4f6] text-[#6b7280] flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSavePasswordReset} className="space-y-3 text-xs">
+                <p className="text-[#527963] text-[11px]">
+                  الهاتف: <strong className="font-sans" dir="ltr">{resetTargetUser.phone}</strong>
+                </p>
+
+                <div>
+                  <label className="block font-bold text-[#14281d] mb-1">كلمة المرور الجديدة *</label>
+                  <input
+                    type="text"
+                    required
+                    value={customPasswordInput}
+                    onChange={(e) => setCustomPasswordInput(e.target.value)}
+                    placeholder="اكتب كلمة المرور الجديدة (6 خانات فأكثر)..."
+                    className="w-full px-3 py-2 border border-[#d1d5db] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#166534] font-mono"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setResetTargetUser(null)}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#f3f4f6] text-[#4b5563] font-bold cursor-pointer"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-3.5 py-1.5 rounded-xl bg-[#166534] hover:bg-[#14532d] text-white font-bold cursor-pointer"
+                  >
+                    حفظ كلمة المرور ✓
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

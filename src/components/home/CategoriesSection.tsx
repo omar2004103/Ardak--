@@ -1,17 +1,24 @@
 import React from 'react';
 import { Shovel, TreePine, Droplet, SunMedium } from 'lucide-react';
+import { useApp } from '../../context/AppContext.tsx';
 
 interface CategoriesSectionProps {
   onSelectCategory?: (propertyType: string) => void;
 }
 
 export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ onSelectCategory }) => {
+  const { listings } = useApp();
+
+  const getCount = (type: string) => {
+    return listings.filter((l) => l.propertyType === type).length;
+  };
+
   const categories = [
     {
       title: 'أراضي زراعية دلتاوية',
       type: 'أرض زراعية',
       desc: 'ري نيلي دائم وتربة خصبة للمحاصيل الحقلية والخضر',
-      count: '65+ معروض',
+      count: `${getCount('أرض زراعية')} معروض`,
       icon: Shovel,
       color: 'from-[#166534] to-[#15803d]',
     },
@@ -19,7 +26,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ onSelectCa
       title: 'مزارع نموذجية جاهزة',
       type: 'مزرعة',
       desc: 'عنابر إنتاج حيواني واستراحات وسكن للعمال وأسوار',
-      count: '38+ معروض',
+      count: `${getCount('مزرعة')} معروض`,
       icon: TreePine,
       color: 'from-[#14532d] to-[#166534]',
     },
@@ -27,7 +34,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ onSelectCa
       title: 'أراضي استصلاح وطاقة شمسية',
       type: 'أرض استصلاح',
       desc: 'آبار ارتوازية ومساحات واسعة للاستثمار المستدام',
-      count: '44+ معروض',
+      count: `${getCount('أرض استصلاح')} معروض`,
       icon: SunMedium,
       color: 'from-[#855e2d] to-[#166534]',
     },
@@ -35,7 +42,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ onSelectCa
       title: 'مزارع نخيل وفواكه مثمرة',
       type: 'مزرعة',
       desc: 'نخيل بارحي ومجدول وزيتون وموالح ذات عائد تصديري',
-      count: '29+ معروض',
+      count: `${getCount('مزرعة')} معروض`,
       icon: Droplet,
       color: 'from-[#1b4332] to-[#2d6a4f]',
     },

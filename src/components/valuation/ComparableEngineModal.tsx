@@ -181,7 +181,7 @@ export const ComparableEngineModal: React.FC<ComparableEngineModalProps> = ({
                 className="text-xs font-bold text-[#166534] bg-white hover:bg-[#f0fdf4] border border-[#bbf7d0] px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
               >
                 <Sparkles className="w-3.5 h-3.5 text-[#16a34a]" />
-                <span>تحميل تجربة: 2 فدان - حوش عيسى (الشعراوية)</span>
+                <span>نموذج استرشادي: 2 فدان - حوش عيسى (الشعراوية)</span>
               </button>
             </div>
 

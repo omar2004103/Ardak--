@@ -7,15 +7,19 @@ import {
   Search,
   Home,
   LogIn,
+  LogOut,
   Heart,
   Shield,
   Layers,
   User as UserIcon,
   TrendingUp,
   Scale,
+  Phone,
+  MessageCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext.tsx';
-import { UserRole } from '../../types/listing.ts';
+import { ArdakLogo } from '../common/ArdakLogo.tsx';
 
 export type AppRoute =
   | 'home'
@@ -40,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   onAddListingClick,
   onLoginClick,
 }) => {
-  const { currentUser, favorites, switchDemoUser } = useApp();
+  const { currentUser, favorites, logout } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleNavigate = (route: AppRoute) => {
@@ -50,55 +54,59 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const handleLogout = async () => {
+    setMobileMenuOpen(false);
+    await logout();
+    if (onNavigate) {
+      onNavigate('home');
+    }
+  };
+
   return (
     <>
-      {/* Top utility bar with quick persona switch */}
-      <div className="bg-[#14532d] text-[#e2f0e6] text-xs py-1.5 px-4" dir="rtl">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-[#22c55e]"></span>
-            <span className="truncate">سوق الأراضي والمزارع في مصر (نسخة الـMVP المعتمدة)</span>
+      {/* Real Platform Utility Bar */}
+      <div className="bg-[#14532d] text-[#e2f0e6] text-xs py-2 px-4 border-b border-[#166534]" dir="rtl">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#22c55e] animate-pulse"></span>
+              <span className="font-semibold text-white truncate text-[11px] sm:text-xs">
+                المنصة الأولى للأراضي والمزارع في مصر
+              </span>
+            </div>
+            <a
+              href="https://mahsoulak.shop/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden md:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#166534] hover:bg-[#15803d] text-[#86efac] hover:text-white transition-all text-[11px] font-bold border border-[#22c55e]/30 shadow-2xs"
+            >
+              <span>منصة محصولك (سوق المحاصيل) 🌾</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
 
-          {/* Quick Demo Switcher in Top Bar */}
-          <div className="flex items-center gap-1.5 text-[11px]">
-            <span className="text-white/60 hidden sm:inline">تبديل الدور:</span>
-            <button
-              type="button"
-              onClick={() => switchDemoUser('owner')}
-              className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
-                currentUser?.role === 'owner'
-                  ? 'bg-white text-[#166534] font-bold'
-                  : 'text-white/80 hover:bg-white/10'
-              }`}
-              title="دخول كمالك أرض"
+          {/* Quick Direct Contact & Hotline */}
+          <div className="flex items-center gap-2 sm:gap-3 text-[11px] shrink-0">
+            <a
+              href="tel:01028200048"
+              className="inline-flex items-center gap-1.5 text-white/90 hover:text-white font-medium hover:underline transition-colors"
+              dir="ltr"
+              title="اتصال مباشر بالدعم الفني والمبيعات"
             >
-              مالك أرض
-            </button>
-            <button
-              type="button"
-              onClick={() => switchDemoUser('user')}
-              className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
-                currentUser?.role === 'user'
-                  ? 'bg-white text-[#166534] font-bold'
-                  : 'text-white/80 hover:bg-white/10'
-              }`}
-              title="دخول كمشتري"
+              <Phone className="w-3.5 h-3.5 text-[#4ade80]" />
+              <span className="font-sans font-bold text-xs">01028200048</span>
+            </a>
+            <span className="text-white/30 hidden sm:inline">|</span>
+            <a
+              href="https://wa.me/201028200048"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#25D366]/20 hover:bg-[#25D366] text-[#4ade80] hover:text-white transition-colors border border-[#25D366]/40 font-bold"
+              title="محادثة واتساب سريعة"
             >
-              مشتري
-            </button>
-            <button
-              type="button"
-              onClick={() => switchDemoUser('admin')}
-              className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
-                currentUser?.role === 'admin'
-                  ? 'bg-white text-[#dc2626] font-bold'
-                  : 'text-white/80 hover:bg-white/10'
-              }`}
-              title="دخول كمشرف (Admin)"
-            >
-              مشرف أدمن
-            </button>
+              <MessageCircle className="w-3 h-3" />
+              <span>واتساب</span>
+            </a>
           </div>
         </div>
       </div>
@@ -107,28 +115,14 @@ export const Header: React.FC<HeaderProps> = ({
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#e2eae5] shadow-xs" dir="rtl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            {/* Logo */}
+            {/* Official Brand Logo */}
             <button
               type="button"
               onClick={() => handleNavigate('home')}
-              className="flex items-center gap-3 group focus:outline-hidden cursor-pointer text-right"
+              className="flex items-center group focus:outline-hidden cursor-pointer text-right transition-opacity hover:opacity-95"
+              title="أرضك - الصفحة الرئيسية"
             >
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#166534] to-[#16a34a] flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform duration-200">
-                <Sprout className="w-6 h-6" />
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-xl sm:text-2xl font-bold tracking-tight text-[#166534]">
-                    Ardak
-                  </span>
-                  <span className="text-xl sm:text-2xl font-black text-[#14281d]">
-                    | أرضك
-                  </span>
-                </div>
-                <span className="text-[11px] sm:text-xs text-[#527963] font-medium leading-none">
-                  سوق الأراضي والمزارع الزراعية
-                </span>
-              </div>
+              <ArdakLogo variant="horizontal" size="md" />
             </button>
 
             {/* Desktop Navigation Links */}
@@ -240,33 +234,45 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Profile / Login Button & Add Listing */}
             <div className="flex items-center gap-3">
               {currentUser ? (
-                <button
-                  type="button"
-                  onClick={() => handleNavigate('profile')}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#e2eae5] hover:border-[#166534] bg-white transition-colors cursor-pointer text-right"
-                  title="الملف الشخصي"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-[#f0fdf4] text-[#166534] flex items-center justify-center font-bold text-xs">
-                    {currentUser.name.charAt(0)}
-                  </div>
-                  <div className="hidden sm:block">
-                    <span className="text-xs font-bold text-[#14281d] block leading-none">
-                      {currentUser.name.split(' ')[0]}
-                    </span>
-                    <span className="text-[10px] text-[#527963] leading-none">
-                      {currentUser.role === 'admin'
-                        ? 'مشرف'
-                        : currentUser.role === 'owner'
-                        ? 'مالك'
-                        : 'مشتري'}
-                    </span>
-                  </div>
-                </button>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleNavigate('profile')}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#e2eae5] hover:border-[#166534] bg-white transition-colors cursor-pointer text-right group"
+                    title="الملف الشخصي"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-[#f0fdf4] text-[#166534] flex items-center justify-center font-bold text-xs group-hover:bg-[#166534] group-hover:text-white transition-colors">
+                      {currentUser.name.charAt(0)}
+                    </div>
+                    <div className="hidden sm:block">
+                      <span className="text-xs font-bold text-[#14281d] block leading-none">
+                        {currentUser.name.split(' ')[0]}
+                      </span>
+                      <span className="text-[10px] text-[#527963] leading-none">
+                        {currentUser.role === 'admin'
+                          ? 'مشرف'
+                          : currentUser.role === 'owner'
+                          ? 'مالك'
+                          : 'مشتري'}
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl border border-transparent hover:border-[#fee2e2] text-[#dc2626] hover:bg-[#fee2e2]/40 transition-colors cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                    title="تسجيل الخروج من الحساب"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden md:inline">خروج</span>
+                  </button>
+                </div>
               ) : (
                 <button
                   type="button"
                   onClick={onLoginClick}
-                  className="text-xs font-bold text-[#166534] hover:bg-[#f0fdf4] px-3 py-2 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="text-xs font-bold text-[#166534] hover:bg-[#f0fdf4] px-3.5 py-2 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 border border-[#166534]/20 shadow-xs"
                 >
                   <LogIn className="w-4 h-4" />
                   <span>دخول / تسجيل</span>
@@ -295,9 +301,9 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Mobile menu dropdown */}
+        {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-[#e2eae5] bg-white px-4 pt-3 pb-6 space-y-2 shadow-lg animate-in slide-in-from-top duration-200 text-right">
+          <div className="lg:hidden bg-white border-b border-[#e2eae5] px-4 pt-3 pb-6 space-y-2 text-right">
             <button
               type="button"
               onClick={() => handleNavigate('home')}
@@ -317,7 +323,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <Search className="w-4 h-4" />
-              <span>البحث عن أرض</span>
+              <span>البحث في الأراضي</span>
             </button>
 
             <button
@@ -328,7 +334,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <Scale className="w-4 h-4 text-[#16a34a]" />
-              <span>قارن الأراضي ⚖️</span>
+              <span>مقارنة الأراضي</span>
             </button>
 
             <button
@@ -339,7 +345,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <TrendingUp className="w-4 h-4 text-[#16a34a]" />
-              <span>مؤشر الصفقات المنفذة</span>
+              <span>مؤشر الصفقات الزراعية</span>
             </button>
 
             <button
@@ -371,16 +377,41 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => handleNavigate('profile')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-semibold text-sm text-right transition-colors cursor-pointer ${
-                currentRoute === 'profile' ? 'text-[#166534] bg-[#f0fdf4]' : 'text-[#374151]'
-              }`}
-            >
-              <UserIcon className="w-4 h-4" />
-              <span>الملف الشخصي ({currentUser?.name || 'زائر'})</span>
-            </button>
+            {currentUser ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleNavigate('profile')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-semibold text-sm text-right transition-colors cursor-pointer ${
+                    currentRoute === 'profile' ? 'text-[#166534] bg-[#f0fdf4]' : 'text-[#374151]'
+                  }`}
+                >
+                  <UserIcon className="w-4 h-4" />
+                  <span>الملف الشخصي ({currentUser.name})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-semibold text-sm text-right transition-colors cursor-pointer text-[#dc2626] hover:bg-[#fee2e2]/40"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>تسجيل الخروج من الحساب</span>
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (onLoginClick) onLoginClick();
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-bold text-sm text-right transition-colors cursor-pointer text-[#166534] bg-[#f0fdf4]"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>تسجيل الدخول / إنشاء حساب</span>
+              </button>
+            )}
 
             {currentUser?.role === 'admin' && (
               <button

@@ -16,6 +16,7 @@ import {
   AlertCircle,
   ChevronLeft,
   Bell,
+  BellRing,
   Search,
   ExternalLink,
   Edit3,
@@ -50,6 +51,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
     listings,
     favorites,
     priceAlerts,
+    togglePriceAlert,
+    isPriceAlertActive,
+    toggleAllFavoritesPriceAlerts,
     upgradeToBusiness,
     requestVerification,
     toggleListingStatus,
@@ -666,22 +670,37 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             {/* TAB: Favorites */}
             {activeTab === 'favorites' && (
               <div className="bg-white rounded-2xl border border-[#e2eae5] p-5 sm:p-6 shadow-2xs space-y-4">
-                <div className="flex items-center justify-between border-b border-[#edf3ef] pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#edf3ef] pb-3">
                   <div>
                     <h3 className="text-base font-black text-[#14281d]">
                       الأراضي المحفوظة ({myFavoriteListings.length})
                     </h3>
                     <p className="text-xs text-[#527963]">
-                      قائمة الأراضي والمزارع التي قمت بحفظها للرجوع إليها في أي وقت.
+                      قائمة الأراضي والمزارع التي قمت بحفظها للرجوع إليها وتتبع أسعارها في أي وقت.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={onNavigateToLands}
-                    className="text-xs text-[#166534] font-bold hover:underline cursor-pointer"
-                  >
-                    تصفح أراضٍ إضافية
-                  </button>
+
+                  {myFavoriteListings.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={toggleAllFavoritesPriceAlerts}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f0fdf4] text-[#166534] border border-[#86efac] text-xs font-bold hover:bg-[#dcfce7] transition-colors cursor-pointer"
+                        title="تفعيل أو إلغاء تنبيهات انخفاض الأسعار لجميع الأراضي في المفضلة"
+                      >
+                        <BellRing className="w-3.5 h-3.5 text-[#16a34a]" />
+                        <span>تبديل تنبيهات السعر لكل المفضلة</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={onNavigateToLands}
+                        className="text-xs text-[#166534] font-bold hover:underline cursor-pointer"
+                      >
+                        تصفح المزيد
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {myFavoriteListings.length === 0 ? (
@@ -697,38 +716,74 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {myFavoriteListings.map((listing) => (
-                      <div
-                        key={listing.id}
-                        className="bg-[#fcfdfc] p-4 rounded-xl border border-[#e2eae5] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                      >
-                        <div>
-                          <h4 className="font-bold text-sm text-[#14281d]">{listing.title}</h4>
-                          <span className="text-[#527963] text-[11px]">
-                            {listing.area} {listing.areaUnit} · {listing.governorate} ({listing.city}) ·{' '}
-                            <strong className="text-[#166534] font-sans font-bold">{listing.price}</strong>
-                          </span>
-                        </div>
+                    {myFavoriteListings.map((listing) => {
+                      const isAlertOn = isPriceAlertActive(listing.id);
 
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => onViewListingDetails(listing)}
-                            className="px-3 py-1.5 rounded-lg bg-[#f0fdf4] text-[#166534] font-bold hover:bg-[#dcfce7] cursor-pointer"
-                          >
-                            معاينة الأرض
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleFavorite(listing.id)}
-                            className="p-1.5 text-[#dc2626] hover:bg-[#fee2e2] rounded-lg cursor-pointer"
-                            title="إزالة من المفضلة"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                      return (
+                        <div
+                          key={listing.id}
+                          className="bg-[#fcfdfc] p-4 rounded-xl border border-[#e2eae5] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-sm text-[#14281d]">{listing.title}</h4>
+                              {isAlertOn && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#dcfce7] text-[#15803d] border border-[#86efac]">
+                                  <BellRing className="w-3 h-3 text-[#16a34a]" />
+                                  <span>تنبيه السعر مفعّل</span>
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[#527963] text-[11px]">
+                              {listing.area} {listing.areaUnit} · {listing.governorate} ({listing.city}) ·{' '}
+                              <strong className="text-[#166534] font-sans font-bold">{listing.price}</strong>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => togglePriceAlert(listing.id)}
+                              className={`px-2.5 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer ${
+                                isAlertOn
+                                  ? 'bg-[#dcfce7] text-[#166534] border border-[#86efac]'
+                                  : 'bg-white border border-[#d1d5db] text-[#374151] hover:bg-[#f3f4f6]'
+                              }`}
+                              title={isAlertOn ? 'إلغاء تنبيه انخفاض السعر' : 'تفعيل تنبيه انخفاض السعر'}
+                            >
+                              {isAlertOn ? (
+                                <>
+                                  <BellRing className="w-3.5 h-3.5 text-[#16a34a]" />
+                                  <span>تنبيه السعر: مفعّل ✓</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Bell className="w-3.5 h-3.5 text-[#6b7280]" />
+                                  <span>تفعيل تنبيه السعر</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => onViewListingDetails(listing)}
+                              className="px-3 py-1.5 rounded-lg bg-[#f0fdf4] text-[#166534] font-bold hover:bg-[#dcfce7] cursor-pointer"
+                            >
+                              معاينة الأرض
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => toggleFavorite(listing.id)}
+                              className="p-1.5 text-[#dc2626] hover:bg-[#fee2e2] rounded-lg cursor-pointer"
+                              title="إزالة من المفضلة"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -742,40 +797,65 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                     تنبيهات انخفاض الأسعار المفعّلة ({priceAlerts.length})
                   </h3>
                   <p className="text-xs text-[#527963]">
-                    الأراضي التي قمت بتفعيل تنبيه لها؛ سيصلك إشعار فوري عند قيام المالك بخفض السعر.
+                    الأراضي والمزارع التي قمت بتفعيل تنبيه لها؛ سيصلك إشعار فوري عند قيام المالك بخفض السعر.
                   </p>
                 </div>
 
-                <div className="space-y-3">
-                  {priceAlerts.map((listingId) => {
-                    const found = listings.find((l) => l.id === listingId);
-                    if (!found) return null;
-                    return (
-                      <div
-                        key={listingId}
-                        className="bg-[#fcfdfc] p-4 rounded-xl border border-[#bbf7d0] flex items-center justify-between text-xs"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <Bell className="w-4 h-4 text-[#16a34a]" />
-                            <h4 className="font-bold text-[#14281d]">{found.title}</h4>
-                          </div>
-                          <span className="text-[#527963] text-[11px] block">
-                            السعر الحالي: <strong>{found.price}</strong> · {found.city}
-                          </span>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => onViewListingDetails(found)}
-                          className="px-3 py-1.5 rounded-lg bg-[#166534] text-white font-bold text-xs hover:bg-[#14532d] cursor-pointer"
+                {priceAlerts.length === 0 ? (
+                  <div className="py-12 text-center space-y-3">
+                    <Bell className="w-10 h-10 text-[#9ca3af] mx-auto" />
+                    <p className="text-xs text-[#6b7280]">لا توجد أراضٍ مفعّل لها تنبيهات أسعار حالياً.</p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('favorites')}
+                      className="px-5 py-2.5 rounded-xl bg-[#166534] text-white text-xs font-bold hover:bg-[#14532d] cursor-pointer"
+                    >
+                      الانتقال إلى المفضلة لتفعيل التنبيهات
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {priceAlerts.map((listingId) => {
+                      const found = listings.find((l) => l.id === listingId);
+                      if (!found) return null;
+                      return (
+                        <div
+                          key={listingId}
+                          className="bg-[#fcfdfc] p-4 rounded-xl border border-[#bbf7d0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                         >
-                          معاينة
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <BellRing className="w-4 h-4 text-[#16a34a]" />
+                              <h4 className="font-bold text-[#14281d]">{found.title}</h4>
+                            </div>
+                            <span className="text-[#527963] text-[11px] block">
+                              السعر الحالي: <strong>{found.price}</strong> · {found.governorate} ({found.city})
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => onViewListingDetails(found)}
+                              className="px-3 py-1.5 rounded-lg bg-[#166534] text-white font-bold text-xs hover:bg-[#14532d] cursor-pointer"
+                            >
+                              معاينة الأرض
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => togglePriceAlert(listingId)}
+                              className="px-2.5 py-1.5 rounded-lg text-[#dc2626] hover:bg-[#fee2e2] font-bold text-xs cursor-pointer"
+                              title="إلغاء تنبيه انخفاض السعر لهذه الأرض"
+                            >
+                              إلغاء التنبيه
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1037,7 +1117,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
                     <div>
                       <label className="block text-xs font-bold text-[#374151] mb-1">
-                        رقم الموبايل المسجل (مؤكد بـ OTP)
+                        رقم الموبايل المسجل (مؤكد ومفعل ✓)
                       </label>
                       <input
                         type="tel"

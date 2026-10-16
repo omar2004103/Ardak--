@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Listing } from '../../types/listing.ts';
 import { ListingCard } from './ListingCard.tsx';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles, Sprout, PlusCircle } from 'lucide-react';
 
 interface LatestListingsSectionProps {
   listings: Listing[];
@@ -39,7 +39,7 @@ export const LatestListingsSection: React.FC<LatestListingsSectionProps> = ({
               أحدث الأراضي المعروضة
             </h2>
             <p className="text-sm sm:text-base text-[#527963] mt-1">
-              إعلانات تجريبية لعرض شكل المنصة
+              أحدث عروض الأراضي والمزارع الزراعية الموثقة للبيع والإيجار في مصر
             </p>
           </div>
 
@@ -81,18 +81,42 @@ export const LatestListingsSection: React.FC<LatestListingsSectionProps> = ({
           </div>
         </div>
 
-        {/* Listings Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {filteredListings.map((listing) => (
-            <ListingCard
-              key={listing.id}
-              listing={listing}
-              onViewDetails={onViewDetails}
-              isComparing={comparedIds.includes(listing.id)}
-              onToggleCompare={onToggleCompare}
-            />
-          ))}
-        </div>
+        {/* Listings Grid or Empty State */}
+        {filteredListings.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-[#e2eae5] p-10 sm:p-14 text-center max-w-lg mx-auto shadow-2xs space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-[#f0fdf4] text-[#166534] flex items-center justify-center mx-auto border border-[#bbf7d0] shadow-xs">
+              <Sprout className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-[#14281d]">لا توجد أراضي معروضة حالياً</h3>
+              <p className="text-xs sm:text-sm text-[#527963] mt-1.5 leading-relaxed">
+                المنصة جاهزة ومصفّرة تماماً للبيانات الفعلية. يمكنك إضافة أول إعلان زراعي حقيقي على المنصة الآن!
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={onNavigateToSearch}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#166534] hover:bg-[#14532d] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>أضف أول إعلان على المنصة</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {filteredListings.map((listing) => (
+              <ListingCard
+                key={listing.id}
+                listing={listing}
+                onViewDetails={onViewDetails}
+                isComparing={comparedIds.includes(listing.id)}
+                onToggleCompare={onToggleCompare}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Bottom Explorer CTA */}
         <div className="mt-12 text-center">
