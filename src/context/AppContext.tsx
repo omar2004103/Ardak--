@@ -10,6 +10,27 @@ import {
 } from '../types/listing.ts';
 import { initialUsers, initialListings, initialReports } from '../data/initialData.ts';
 import {
+  LandPurchaseRequest,
+  LandOffer,
+  RequestNotification,
+  PurchaseRequestFilters,
+  OfferStatus,
+} from '../types/purchaseRequest.ts';
+import {
+  createPurchaseRequest as createPurchaseRequestInFirestore,
+  getPublicPurchaseRequests,
+  getUserPurchaseRequests,
+  updatePurchaseRequest as updatePurchaseRequestInFirestore,
+  closePurchaseRequest as closePurchaseRequestInFirestore,
+  renewPurchaseRequest as renewPurchaseRequestInFirestore,
+  adminModerateRequest,
+  submitLandOffer as submitLandOfferInFirestore,
+  getOffersForRequest,
+  updateOfferStatus as updateOfferStatusInFirestore,
+  getUserRequestNotifications,
+  markNotificationAsRead,
+} from '../lib/purchaseRequestService.ts';
+import {
   auth,
   testConnection,
   formatEgyptianPhoneToE164,
@@ -156,6 +177,66 @@ interface AppContextType {
   updateUserPasswordByAdmin: (userId: string, newPassword: string) => { success: boolean; message: string };
   toggleListingVerification: (listingId: string) => void;
   resetAllPlatformDataToZero: () => void;
+
+  // Land Purchase Requests & Offers
+  purchaseRequests: LandPurchaseRequest[];
+  userRequests: LandPurchaseRequest[];
+  requestNotifications: RequestNotification[];
+  isLoadingRequests: boolean;
+  refreshPurchaseRequests: (filters?: PurchaseRequestFilters) => Promise<void>;
+  createRequest: (
+    data: Omit<
+      LandPurchaseRequest,
+      | 'id'
+      | 'buyerId'
+      | 'buyerName'
+      | 'buyerPhone'
+      | 'buyerRole'
+      | 'status'
+      | 'moderationStatus'
+      | 'offerCount'
+      | 'createdAt'
+      | 'updatedAt'
+      | 'expiresAt'
+    >
+  ) => Promise<{ success: boolean; id?: string; error?: string }>;
+  updateRequest: (
+    id: string,
+    updates: Partial<LandPurchaseRequest>
+  ) => Promise<{ success: boolean; error?: string }>;
+  closeRequest: (id: string) => Promise<{ success: boolean; error?: string }>;
+  renewRequest: (id: string, durationDays?: number) => Promise<{ success: boolean; error?: string }>;
+  adminModerateRequestAction: (
+    id: string,
+    action: 'hide' | 'restore' | 'close',
+    reason: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  submitOffer: (
+    request: LandPurchaseRequest,
+    offerData: {
+      offeredArea: number;
+      areaUnit: LandPurchaseRequest['areaUnit'];
+      totalPrice: number;
+      pricePerFeddan?: number;
+      governorate: string;
+      city: string;
+      message: string;
+      existingListingId?: string;
+      existingListingTitle?: string;
+      waterSource?: string;
+      legalStatus?: string;
+      electricity?: boolean;
+      images?: string[];
+    }
+  ) => Promise<{ success: boolean; offerId?: string; error?: string }>;
+  getOffers: (requestId: string) => Promise<LandOffer[]>;
+  respondToOffer: (
+    requestId: string,
+    offerId: string,
+    newStatus: OfferStatus,
+    reason?: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  dismissRequestNotification: (notifId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -307,6 +388,160 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [activeToast, setActiveToast] = useState<PriceDropNotification | null>(null);
 
+  // Purchase Requests & Offers States
+  const [purchaseRequests, setPurchaseRequests] = useState<LandPurchaseRequest[]>([]);
+  const [userRequests, setUserRequests] = useState<LandPurchaseRequest[]>([]);
+  const [requestNotifications, setRequestNotifications] = useState<RequestNotification[]>([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState<boolean>(false);
+
+  const refreshPurchaseRequests = async (filters?: PurchaseRequestFilters) => {
+    setIsLoadingRequests(true);
+    try {
+      const items = await getPublicPurchaseRequests(filters);
+      setPurchaseRequests(items);
+    } catch (e) {
+      console.error('refreshPurchaseRequests error:', e);
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  };
+
+  const createRequest = async (
+    data: Omit<
+      LandPurchaseRequest,
+      | 'id'
+      | 'buyerId'
+      | 'buyerName'
+      | 'buyerPhone'
+      | 'buyerRole'
+      | 'status'
+      | 'moderationStatus'
+      | 'offerCount'
+      | 'createdAt'
+      | 'updatedAt'
+      | 'expiresAt'
+    >
+  ) => {
+    if (!currentUser) {
+      return { success: false, error: 'يجب تسجيل الدخول أولاً لإنشاء طلب شراء.' };
+    }
+    const res = await createPurchaseRequestInFirestore(currentUser, data);
+    if (res.success && res.id) {
+      await refreshPurchaseRequests();
+      if (currentUser?.id) {
+        const myReqs = await getUserPurchaseRequests(currentUser.id);
+        setUserRequests(myReqs);
+      }
+    }
+    return res;
+  };
+
+  const updateRequest = async (id: string, updates: Partial<LandPurchaseRequest>) => {
+    if (!currentUser) return { success: false, error: 'غير مسجل دخول' };
+    const res = await updatePurchaseRequestInFirestore(id, currentUser.id, updates);
+    if (res.success) {
+      await refreshPurchaseRequests();
+      const myReqs = await getUserPurchaseRequests(currentUser.id);
+      setUserRequests(myReqs);
+    }
+    return res;
+  };
+
+  const closeRequest = async (id: string) => {
+    if (!currentUser) return { success: false, error: 'غير مسجل دخول' };
+    const res = await closePurchaseRequestInFirestore(id, currentUser.id);
+    if (res.success) {
+      await refreshPurchaseRequests();
+      const myReqs = await getUserPurchaseRequests(currentUser.id);
+      setUserRequests(myReqs);
+    }
+    return res;
+  };
+
+  const renewRequest = async (id: string, durationDays: number = 30) => {
+    if (!currentUser) return { success: false, error: 'غير مسجل دخول' };
+    const res = await renewPurchaseRequestInFirestore(id, currentUser.id, durationDays);
+    if (res.success) {
+      await refreshPurchaseRequests();
+      const myReqs = await getUserPurchaseRequests(currentUser.id);
+      setUserRequests(myReqs);
+    }
+    return res;
+  };
+
+  const adminModerateRequestAction = async (
+    id: string,
+    action: 'hide' | 'restore' | 'close',
+    reason: string
+  ) => {
+    if (!currentUser || currentUser.role !== 'admin') {
+      return { success: false, error: 'صلاحية إدارة مطلوبة.' };
+    }
+    const res = await adminModerateRequest(id, action, reason, currentUser);
+    if (res.success) {
+      await refreshPurchaseRequests();
+    }
+    return res;
+  };
+
+  const submitOffer = async (
+    request: LandPurchaseRequest,
+    offerData: {
+      offeredArea: number;
+      areaUnit: LandPurchaseRequest['areaUnit'];
+      totalPrice: number;
+      pricePerFeddan?: number;
+      governorate: string;
+      city: string;
+      message: string;
+      existingListingId?: string;
+      existingListingTitle?: string;
+      waterSource?: string;
+      legalStatus?: string;
+      electricity?: boolean;
+      images?: string[];
+    }
+  ) => {
+    if (!currentUser) return { success: false, error: 'يجب تسجيل الدخول لتقديم عرض.' };
+    const res = await submitLandOfferInFirestore(request, currentUser, offerData);
+    if (res.success) {
+      await refreshPurchaseRequests();
+    }
+    return res;
+  };
+
+  const getOffers = async (requestId: string) => {
+    return getOffersForRequest(requestId);
+  };
+
+  const respondToOffer = async (
+    requestId: string,
+    offerId: string,
+    newStatus: OfferStatus,
+    reason?: string
+  ) => {
+    if (!currentUser) return { success: false, error: 'غير مسجل دخول' };
+    return updateOfferStatusInFirestore(requestId, offerId, newStatus, currentUser, reason);
+  };
+
+  const dismissRequestNotification = async (notifId: string) => {
+    await markNotificationAsRead(notifId);
+    setRequestNotifications((prev) =>
+      prev.map((n) => (n.id === notifId ? { ...n, read: true } : n))
+    );
+  };
+
+  // Sync user's requests and notifications when currentUser changes
+  useEffect(() => {
+    if (currentUser?.id) {
+      getUserPurchaseRequests(currentUser.id).then((reqs) => setUserRequests(reqs));
+      getUserRequestNotifications(currentUser.id).then((notifs) => setRequestNotifications(notifs));
+    } else {
+      setUserRequests([]);
+      setRequestNotifications([]);
+    }
+  }, [currentUser?.id]);
+
   // 1. Initialize and Validate Firestore Connection & Seed initial data
   useEffect(() => {
     let mounted = true;
@@ -426,6 +661,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return combined;
           });
         }
+        // Fetch initial purchase requests
+        await refreshPurchaseRequests();
       } catch (err) {
         console.warn('Firebase initial sync completed with fallback:', err);
       }
@@ -1207,18 +1444,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // ---------------------------------------------------------------------
 
   const addListing = (data: Omit<Listing, 'id' | 'createdAt' | 'viewsCount'>) => {
+    if (!currentUser) {
+      return {
+        success: false,
+        id: '',
+        message: 'عذراً، لا يمكن نشر أي إعلان إلا بعد تسجيل الدخول أو إنشاء حساب على المنصة.',
+      };
+    }
+
     const newId = `ard-${Date.now()}`;
     const newListing: Listing = {
       ...data,
       id: newId,
-      ownerId: currentUser?.id || 'owner-guest',
-      ownerName: currentUser?.companyProfile?.companyName || currentUser?.name || data.ownerName || 'المعلن',
-      advertiserType: currentUser?.role === 'company' ? 'شركة عقارية' : currentUser?.role === 'agent' ? 'وسيط' : 'مالك',
-      isVerified: currentUser?.verificationLevel === 'verified_company' || currentUser?.verificationLevel === 'verified_user',
+      ownerId: currentUser.id,
+      ownerName: currentUser.companyProfile?.companyName || currentUser.name || data.ownerName || 'المعلن',
+      contactPhone: data.contactPhone || currentUser.phone,
+      whatsappNumber: data.whatsappNumber || `2${currentUser.phone}`,
+      advertiserType: currentUser.role === 'company' ? 'شركة عقارية' : currentUser.role === 'agent' ? 'وسيط' : 'مالك',
+      isVerified: currentUser.verificationLevel === 'verified_company' || currentUser.verificationLevel === 'verified_user',
       phoneVerified: true,
       createdAt: new Date().toISOString().split('T')[0],
       viewsCount: 1,
-      status: currentUser?.role === 'admin' ? 'published' : 'pending_approval',
+      status: currentUser.role === 'admin' ? 'published' : 'pending_approval',
     };
 
     setListings((prev) => [newListing, ...prev]);
@@ -1228,9 +1475,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       success: true,
       id: newId,
       message:
-        currentUser?.role === 'admin'
-          ? 'تم نشر الإعلان بنجاح في السحابة وقاعدة البيانات!'
-          : 'تم إرسال إعلانك بنجاح وحفظه في السحابة! سيتم اعتماده قريباً من الإدارة.',
+        currentUser.role === 'admin'
+          ? 'تم نشر الإعلان بنجاح وتفعيله على المنصة!'
+          : 'تم إرسال إعلانك بنجاح للمراجعة والاعتماد من إدارة المنصة.',
     };
   };
 
@@ -1559,6 +1806,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateUserRole,
         updateUserPasswordByAdmin,
         toggleListingVerification,
+        purchaseRequests,
+        userRequests,
+        requestNotifications,
+        isLoadingRequests,
+        refreshPurchaseRequests,
+        createRequest,
+        updateRequest,
+        closeRequest,
+        renewRequest,
+        adminModerateRequestAction,
+        submitOffer,
+        getOffers,
+        respondToOffer,
+        dismissRequestNotification,
       }}
     >
       {children}

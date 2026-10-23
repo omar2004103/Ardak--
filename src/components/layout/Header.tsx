@@ -17,6 +17,7 @@ import {
   Phone,
   MessageCircle,
   ExternalLink,
+  FileCheck2,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext.tsx';
 import { ArdakLogo } from '../common/ArdakLogo.tsx';
@@ -24,6 +25,8 @@ import { ArdakLogo } from '../common/ArdakLogo.tsx';
 export type AppRoute =
   | 'home'
   | 'lands'
+  | 'requests'
+  | 'my-requests'
   | 'compare'
   | 'sold-deals'
   | 'my-listings'
@@ -151,6 +154,20 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Search className="w-4 h-4" />
                 <span>البحث عن أرض</span>
+              </button>
+
+              {/* Land Purchase Requests */}
+              <button
+                type="button"
+                onClick={() => handleNavigate('requests')}
+                className={`flex items-center gap-1.5 transition-colors py-1 border-b-2 cursor-pointer ${
+                  currentRoute === 'requests' || currentRoute === 'my-requests'
+                    ? 'text-[#166534] border-[#166534]'
+                    : 'text-[#4b6354] hover:text-[#166534] border-transparent hover:border-[#166534]'
+                }`}
+              >
+                <FileCheck2 className="w-4 h-4 text-[#16a34a]" />
+                <span>طلبات الشراء</span>
               </button>
 
               {/* Compare Lands ⚖️ */}
@@ -325,6 +342,30 @@ export const Header: React.FC<HeaderProps> = ({
               <Search className="w-4 h-4" />
               <span>البحث في الأراضي</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => handleNavigate('requests')}
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-semibold text-sm text-right transition-colors cursor-pointer ${
+                currentRoute === 'requests' ? 'text-[#166534] bg-[#f0fdf4]' : 'text-[#374151]'
+              }`}
+            >
+              <FileCheck2 className="w-4 h-4 text-[#16a34a]" />
+              <span>طلبات شراء الأراضي</span>
+            </button>
+
+            {currentUser && (
+              <button
+                type="button"
+                onClick={() => handleNavigate('my-requests')}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-semibold text-sm text-right transition-colors cursor-pointer ${
+                  currentRoute === 'my-requests' ? 'text-[#166534] bg-[#f0fdf4]' : 'text-[#374151]'
+                }`}
+              >
+                <FileCheck2 className="w-4 h-4" />
+                <span>طلباتي وعروضي</span>
+              </button>
+            )}
 
             <button
               type="button"

@@ -33,13 +33,21 @@ import {
 import rawConfig from '../../firebase-applet-config.json';
 import { User, Listing, ListingReport, VerificationRequest } from '../types/listing.ts';
 
+// Safely resolve environment variables in Vite and Node runtimes
+const env =
+  typeof import.meta !== 'undefined' && (import.meta as any).env
+    ? (import.meta as any).env
+    : typeof process !== 'undefined' && process.env
+    ? process.env
+    : {};
+
 // Extract Firebase configuration
 const firebaseConfig = {
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || rawConfig.projectId,
+  projectId: env.VITE_FIREBASE_PROJECT_ID || rawConfig.projectId,
   appId: rawConfig.appId,
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || rawConfig.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || rawConfig.authDomain,
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || rawConfig.firestoreDatabaseId,
+  apiKey: env.VITE_FIREBASE_API_KEY || rawConfig.apiKey,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || rawConfig.authDomain,
+  firestoreDatabaseId: env.VITE_FIREBASE_DATABASE_ID || rawConfig.firestoreDatabaseId,
   storageBucket: rawConfig.storageBucket,
   messagingSenderId: rawConfig.messagingSenderId,
 };

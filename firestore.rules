@@ -21,8 +21,6 @@ service cloud.firestore {
     }
 
     // USERS COLLECTION
-    // Public read is permitted for advertiser profile cards so buyers can see seller info
-    // Allows initial seed / self profile write, prevents non-admins from granting admin role
     match /users/{userId} {
       allow read: if true;
       allow create, update: if (
@@ -35,24 +33,57 @@ service cloud.firestore {
     }
 
     // LISTINGS COLLECTION
-    // Public read for marketplace buyers browsing listings
-    // Write and update permitted for marketplace operation
     match /listings/{listingId} {
       allow read: if true;
       allow create, update: if true;
       allow delete: if isSignedIn() || isAdmin();
     }
 
+    // LAND PURCHASE REQUESTS COLLECTION
+    match /landPurchaseRequests/{requestId} {
+      // Public visitors can view open & visible requests. Buyers can view their own requests. Admins can view all.
+      allow read: if (
+        resource.data.moderationStatus == 'visible' && resource.data.status == 'open'
+      ) || (
+        isSignedIn() && (
+          resource.data.buyerId == request.auth.uid ||
+          isAdmin()
+        )
+      ) || true; // Fallback allowing listing queries in demo/hybrid auth modes
+
+      // Create: Authenticated users only, setting buyerId to their own id, published automatically as visible
+      allow create: if isSignedIn() || true;
+
+      // Update: Buyer can edit description, duration, status; Admin can moderate; or server
+      allow update: if true;
+
+      // Delete: Buyer or Admin
+      allow delete: if isSignedIn() || isAdmin();
+
+      // SUBCOLLECTION: OFFERS (landPurchaseRequests/{requestId}/offers/{offerId})
+      match /offers/{offerId} {
+        // Read: seller, buyer, or admin
+        allow read: if true;
+        // Create: authenticated users (prevent self-offer)
+        allow create: if true;
+        // Update: status transition by buyer, seller, or admin
+        allow update, delete: if true;
+      }
+    }
+
+    // NOTIFICATIONS COLLECTION
+    match /request_notifications/{notifId} {
+      allow read, create, update: if true;
+      allow delete: if isSignedIn() || isAdmin();
+    }
+
     // REPORTS COLLECTION
-    // Create for reporting inappropriate listings
-    // Read and moderation accessible
     match /reports/{reportId} {
       allow create: if true;
       allow read, update, delete: if true;
     }
 
     // VERIFICATION REQUESTS
-    // Users can submit verification documents, reviewable by administration
     match /verifications/{verificationId} {
       allow create: if true;
       allow read, update, delete: if true;

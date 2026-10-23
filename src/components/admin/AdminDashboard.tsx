@@ -52,6 +52,7 @@ export type AdminTab =
   | 'listings'
   | 'pending'
   | 'sold-deals'
+  | 'purchase-requests'
   | 'users'
   | 'companies'
   | 'reports'
@@ -87,12 +88,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     updateUserPasswordByAdmin,
     toggleListingVerification,
     resetAllPlatformDataToZero,
+    purchaseRequests,
+    adminModerateRequestAction,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [rejectingListingId, setRejectingListingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+
+  // Purchase Requests Moderation State
+  const [requestModerationFilter, setRequestModerationFilter] = useState<'all' | 'visible' | 'hidden'>('all');
+  const [requestStatusFilter, setRequestStatusFilter] = useState<'all' | 'open' | 'closed' | 'expired'>('all');
+  const [requestSearchQuery, setRequestSearchQuery] = useState('');
+  const [moderatingRequestId, setModeratingRequestId] = useState<string | null>(null);
+  const [moderatingAction, setModeratingAction] = useState<'hide' | 'restore' | 'close'>('hide');
+  const [moderatingReason, setModeratingReason] = useState('');
+  const [isSubmittingModeration, setIsSubmittingModeration] = useState(false);
 
   // Sold Transactions confidential view toggle
   const [showConfidentialDetails, setShowConfidentialDetails] = useState(true);
@@ -376,6 +388,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             >
               <DollarSign className="w-3.5 h-3.5 text-[#16a34a]" />
               <span>الصفقات المباعة (البيانات الداخلية)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('purchase-requests')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'purchase-requests'
+                  ? 'bg-[#166534] text-white shadow-2xs'
+                  : 'text-[#374151] hover:bg-[#f3f4f6]'
+              }`}
+            >
+              <FileCheck className="w-3.5 h-3.5 text-[#16a34a]" />
+              <span>طلبات الشراء ({purchaseRequests.length})</span>
             </button>
 
             <button
@@ -757,6 +782,250 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* TAB: LAND PURCHASE REQUESTS MANAGEMENT */}
+        {activeTab === 'purchase-requests' && (
+          <div className="bg-white rounded-2xl border border-[#e2eae5] p-5 sm:p-6 shadow-2xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#edf3ef] pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <FileCheck className="w-5 h-5 text-[#166534]" />
+                  <h2 className="text-base sm:text-lg font-black text-[#14281d]">
+                    إدارة طلبات شراء الأراضي والبلاغات ({purchaseRequests.length})
+                  </h2>
+                </div>
+                <p className="text-xs text-[#527963] mt-0.5">
+                  مراقبة طلبات الشراء المنشورة تلقائياً، إخفاء المخالفات الإدارية، وإيقاف أو إعادة فتح الطلبات.
+                </p>
+              </div>
+
+              {/* Stats badges */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="px-2.5 py-1 bg-[#f0fdf4] text-[#166534] font-bold rounded-lg border border-[#86efac]">
+                  النشطة: {purchaseRequests.filter((r) => r.status === 'open' && r.moderationStatus === 'visible').length}
+                </span>
+                <span className="px-2.5 py-1 bg-[#fee2e2] text-[#dc2626] font-bold rounded-lg border border-[#fca5a5]">
+                  المخفية إدارياً: {purchaseRequests.filter((r) => r.moderationStatus === 'hidden').length}
+                </span>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={requestSearchQuery}
+                  onChange={(e) => setRequestSearchQuery(e.target.value)}
+                  placeholder="ابحث بالعنوان، المشتري، رقم الهاتف، المحافظة..."
+                  className="w-full pr-9 pl-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#166534]"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={requestModerationFilter}
+                  onChange={(e) => setRequestModerationFilter(e.target.value as any)}
+                  className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold bg-white"
+                >
+                  <option value="all">جميع حالات الإشراف</option>
+                  <option value="visible">ظاهر للعامة (Visible)</option>
+                  <option value="hidden">مخفي إدارياً (Hidden)</option>
+                </select>
+
+                <select
+                  value={requestStatusFilter}
+                  onChange={(e) => setRequestStatusFilter(e.target.value as any)}
+                  className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold bg-white"
+                >
+                  <option value="all">جميع الحالات</option>
+                  <option value="open">مفتوح (Open)</option>
+                  <option value="closed">مغلق (Closed)</option>
+                  <option value="expired">منتهي (Expired)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Requests List */}
+            {purchaseRequests.length === 0 ? (
+              <div className="py-12 text-center text-xs text-[#527963] space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-[#16a34a] mx-auto" />
+                <p className="font-bold">لا توجد طلبات شراء مسجلة في المنصة حالياً.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {purchaseRequests
+                  .filter((req) => {
+                    if (requestModerationFilter !== 'all' && req.moderationStatus !== requestModerationFilter) {
+                      return false;
+                    }
+                    if (requestStatusFilter !== 'all' && req.status !== requestStatusFilter) {
+                      return false;
+                    }
+                    if (requestSearchQuery.trim()) {
+                      const q = requestSearchQuery.trim().toLowerCase();
+                      const matchTitle = req.title.toLowerCase().includes(q);
+                      const matchBuyer = req.buyerName.toLowerCase().includes(q);
+                      const matchPhone = req.buyerPhone.includes(q);
+                      const matchGov = req.governorate.toLowerCase().includes(q);
+                      const matchCity = req.city.toLowerCase().includes(q);
+                      if (!matchTitle && !matchBuyer && !matchPhone && !matchGov && !matchCity) {
+                        return false;
+                      }
+                    }
+                    return true;
+                  })
+                  .map((req) => (
+                    <div
+                      key={req.id}
+                      className={`p-4 rounded-xl border transition-all text-xs space-y-3 ${
+                        req.moderationStatus === 'hidden'
+                          ? 'border-red-200 bg-red-50/50'
+                          : 'border-gray-200 bg-white hover:border-emerald-200'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-sm text-[#14281d]">{req.title}</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-100">
+                              {req.category}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                req.moderationStatus === 'visible'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {req.moderationStatus === 'visible' ? 'ظاهر للعامة' : 'مخفي إدارياً'}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                req.status === 'open'
+                                  ? 'bg-sky-100 text-sky-800'
+                                  : req.status === 'closed'
+                                  ? 'bg-gray-100 text-gray-700'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              الحالة: {req.status === 'open' ? 'مفتوح' : req.status === 'closed' ? 'مغلق' : 'منتهي'}
+                            </span>
+                          </div>
+
+                          <p className="text-[#527963] text-[11px]">
+                            المشتري: <strong>{req.buyerName}</strong> ({req.buyerPhone}) · المحافظة: {req.governorate} — {req.city}
+                          </p>
+
+                          <p className="text-gray-600 text-[11px]">
+                            المساحة: {req.areaMin} إلى {req.areaMax} {req.areaUnit} · الميزانية:{' '}
+                            {req.isBudgetUnspecified ? 'مفتوحة للتفاوض' : `${req.budgetMax?.toLocaleString('ar-EG')} ج.م`} · العروض المقدمة: {req.offerCount || 0}
+                          </p>
+
+                          {req.moderationReason && (
+                            <p className="text-red-700 bg-red-100/70 p-2 rounded-lg text-[11px]">
+                              سبب الإجراء الإداري: {req.moderationReason}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Admin Action Buttons */}
+                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                          {req.moderationStatus === 'visible' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setModeratingRequestId(req.id);
+                                setModeratingAction('hide');
+                                setModeratingReason('مخالفة معايير وسياسات النشر على منصة أرضك');
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-[#fee2e2] text-[#dc2626] font-bold hover:bg-[#fecaca] transition-colors"
+                            >
+                              إخفاء الطلب
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await adminModerateRequestAction(req.id, 'restore', 'إلغاء الإخفاء وإعادة النشر للعامة');
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-[#f0fdf4] text-[#166534] border border-[#86efac] font-bold hover:bg-emerald-100 transition-colors"
+                            >
+                              إلغاء الإخفاء ونشر ✓
+                            </button>
+                          )}
+
+                          {req.status === 'open' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setModeratingRequestId(req.id);
+                                setModeratingAction('close');
+                                setModeratingReason('إغلاق إداري للطلب لاكتمال الغرض أو المخالفة');
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-colors"
+                            >
+                              إغلاق نهائي
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            {/* Moderation Reason Modal */}
+            {moderatingRequestId && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" dir="rtl">
+                <div className="bg-white rounded-2xl max-w-md w-full p-6 text-right space-y-4 shadow-xl border border-gray-100">
+                  <h3 className="text-base font-bold text-gray-900">
+                    {moderatingAction === 'hide' ? 'إخفاء طلب الشراء عن العامة' : 'إغلاق طلب الشراء نهائياً'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    يرجى كتابة سبب اتخاذ هذا الإجراء الإداري ليتم تسجيله في سجل التدقيق (Audit Logs).
+                  </p>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">سبب الإجراء:</label>
+                    <textarea
+                      rows={3}
+                      value={moderatingReason}
+                      onChange={(e) => setModeratingReason(e.target.value)}
+                      placeholder="اكتب سبب الإخفاء أو الإغلاق..."
+                      className="w-full p-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#166534]"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setModeratingRequestId(null)}
+                      className="px-4 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-100"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSubmittingModeration || !moderatingReason.trim()}
+                      onClick={async () => {
+                        setIsSubmittingModeration(true);
+                        await adminModerateRequestAction(moderatingRequestId, moderatingAction, moderatingReason.trim());
+                        setIsSubmittingModeration(false);
+                        setModeratingRequestId(null);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-[#dc2626] text-white text-xs font-bold hover:bg-[#b91c1c] disabled:opacity-50"
+                    >
+                      {isSubmittingModeration ? 'جاري التنفيذ...' : 'تأكيد الإجراء'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

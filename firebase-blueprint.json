@@ -44,6 +44,56 @@
       },
       "required": ["id", "title", "rawPrice", "area", "governorate", "ownerId", "status"]
     },
+    "LandPurchaseRequest": {
+      "title": "LandPurchaseRequest",
+      "description": "Buyer request for purchasing land with specific criteria",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "buyerId": { "type": "string" },
+        "buyerName": { "type": "string" },
+        "buyerPhone": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "governorate": { "type": "string" },
+        "city": { "type": "string" },
+        "areaMin": { "type": "number" },
+        "areaMax": { "type": "number" },
+        "areaUnit": { "type": "string" },
+        "budgetMin": { "type": "number" },
+        "budgetMax": { "type": "number" },
+        "budgetVisibility": { "type": "string", "enum": ["public", "hidden"] },
+        "purpose": { "type": "string" },
+        "contactPreferences": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "closed", "expired"] },
+        "moderationStatus": { "type": "string", "enum": ["visible", "hidden"] },
+        "offerCount": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "expiresAt": { "type": "string" }
+      },
+      "required": ["id", "buyerId", "title", "category", "governorate", "city", "areaMin", "areaMax", "status", "moderationStatus"]
+    },
+    "LandOffer": {
+      "title": "LandOffer",
+      "description": "Seller offer submitted against a land purchase request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "requestId": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "sellerPhone": { "type": "string" },
+        "offeredArea": { "type": "number" },
+        "areaUnit": { "type": "string" },
+        "totalPrice": { "type": "number" },
+        "governorate": { "type": "string" },
+        "city": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "withdrawn", "expired"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "requestId", "sellerId", "offeredArea", "totalPrice", "status"]
+    },
     "Report": {
       "title": "Report",
       "description": "Report submitted against an ad",
@@ -100,6 +150,14 @@
     "/listings/{listingId}": {
       "schema": { "$ref": "#/entities/Listing" },
       "description": "Collection of agricultural land listings"
+    },
+    "/landPurchaseRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/LandPurchaseRequest" },
+      "description": "Collection of land purchase requests created by buyers"
+    },
+    "/landPurchaseRequests/{requestId}/offers/{offerId}": {
+      "schema": { "$ref": "#/entities/LandOffer" },
+      "description": "Subcollection of seller offers on a purchase request"
     },
     "/reports/{reportId}": {
       "schema": { "$ref": "#/entities/Report" },

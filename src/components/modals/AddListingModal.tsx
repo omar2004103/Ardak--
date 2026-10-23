@@ -11,6 +11,9 @@ import {
   ShieldCheck,
   Plus,
   Camera,
+  Lock,
+  LogIn,
+  UserPlus,
 } from 'lucide-react';
 import { egyptianGovernorates } from '../../data/listings.ts';
 import { useApp } from '../../context/AppContext.tsx';
@@ -29,6 +32,7 @@ interface AddListingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onListingCreated?: (listingId: string) => void;
+  onOpenAuthModal?: (mode: 'login' | 'register') => void;
 }
 
 const govCoords: Record<string, { lat: number; lng: number }> = {
@@ -54,6 +58,7 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
   isOpen,
   onClose,
   onListingCreated,
+  onOpenAuthModal,
 }) => {
   const { addListing, currentUser } = useApp();
 
@@ -191,14 +196,16 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
       documentsAvailable: [ownershipType, 'خريطة مساحية معتمدة'],
       customImages: customImages.length > 0 ? customImages : undefined,
       documentImages: documentImages.length > 0 ? documentImages : undefined,
-      contactPhone: contactPhone || '01012345671',
-      whatsappNumber: whatsappNumber || '201012345671',
+      contactPhone: contactPhone || currentUser?.phone || '',
+      whatsappNumber: whatsappNumber || (currentUser?.phone ? `2${currentUser.phone}` : ''),
       description,
       location: coords,
     });
 
-    setCreatedId(result.id);
-    setSubmitted(true);
+    if (result.success && result.id) {
+      setCreatedId(result.id);
+      setSubmitted(true);
+    }
   };
 
   const handleFinish = () => {
@@ -268,8 +275,76 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
                 </button>
               </div>
             </div>
+          ) : !currentUser ? (
+            /* Auth Required Gate Screen */
+            <div className="py-8 px-4 text-center space-y-5 animate-in fade-in duration-200">
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200 shadow-xs">
+                <Lock className="w-8 h-8" />
+              </div>
+
+              <div className="max-w-md mx-auto space-y-2">
+                <h3 className="text-xl font-black text-[#14281d]">
+                  تسجيل الحساب مطلوب لنشر الإعلانات
+                </h3>
+                <p className="text-xs sm:text-sm text-[#527963] leading-relaxed">
+                  لحماية مصداقية العروض وربط إعلانك ببياناتك وهاتفك للتواصل المباشر مع المشترين، يجب أن تسجل حسابك أو تسجل دخولك أولاً.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] text-right text-xs text-[#166534] max-w-md mx-auto space-y-1">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <ShieldCheck className="w-4 h-4 text-[#16a34a]" />
+                  <span>مميزات التسجيل قبل النشر:</span>
+                </div>
+                <ul className="list-disc list-inside text-[11px] text-[#4b6354] space-y-0.5 pr-1">
+                  <li>تفعيل فوري خلال ثوانٍ وبدون أي انتظار.</li>
+                  <li>تلقي اتصالات ورسائل المشترين المهتمين بأرضك مباشرة.</li>
+                  <li>إمكانية تعديل الإعلان أو تحديث سعره أو إيقافه في أي وقت.</li>
+                </ul>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-sm mx-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    if (onOpenAuthModal) onOpenAuthModal('register');
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#166534] hover:bg-[#14532d] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>إنشاء حساب جديد (تسجيل فوري)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    if (onOpenAuthModal) onOpenAuthModal('login');
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-white border border-[#d1d5db] hover:bg-[#f9fafb] text-[#374151] font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>تسجيل الدخول</span>
+                </button>
+              </div>
+            </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Publisher Identity Confirmation Badge */}
+              <div className="p-3 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#16a34a]" />
+                  <span className="text-[#166534]">
+                    الناشر:{' '}
+                    <strong className="text-[#14281d]">
+                      {currentUser.name} ({currentUser.phone})
+                    </strong>
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-md bg-white text-[#166534] border border-[#86efac] font-bold text-[11px]">
+                  {currentUser.accountType || 'مالك'}
+                </span>
+              </div>
               {/* Title */}
               <div>
                 <label className="block text-xs font-bold text-[#374151] mb-1">

@@ -26,6 +26,13 @@ import { SeoDirectory } from './components/seo/SeoDirectory.tsx';
 import { SoldDealsSection } from './components/deals/SoldDealsSection.tsx';
 import { ComparableEngineModal } from './components/valuation/ComparableEngineModal.tsx';
 import { PriceDropToast } from './components/notifications/PriceDropToast.tsx';
+import { PurchaseRequestsPage } from './components/requests/PurchaseRequestsPage.tsx';
+import { MyRequestsPage } from './components/requests/MyRequestsPage.tsx';
+import { CreateRequestModal } from './components/requests/CreateRequestModal.tsx';
+import { SubmitOfferModal } from './components/requests/SubmitOfferModal.tsx';
+import { RequestDetailsModal } from './components/requests/RequestDetailsModal.tsx';
+import { EditRequestModal } from './components/requests/EditRequestModal.tsx';
+import { LandPurchaseRequest } from './types/purchaseRequest.ts';
 import { Listing, SearchFilters } from './types/listing.ts';
 import { AlertCircle } from 'lucide-react';
 
@@ -94,6 +101,8 @@ function resolveSeoRoute(rawPath: string): { route: AppRoute; filters: SearchFil
   const validRoutes: AppRoute[] = [
     'home',
     'lands',
+    'requests',
+    'my-requests',
     'compare',
     'sold-deals',
     'my-listings',
@@ -150,7 +159,37 @@ function MainApp() {
   const [reportingListing, setReportingListing] = useState<Listing | null>(null);
   const [isAddListingOpen, setIsAddListingOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [authCustomNotice, setAuthCustomNotice] = useState<string | undefined>(undefined);
   const [mapsQuotaExceeded, setMapsQuotaExceeded] = useState(false);
+
+  // Purchase Requests state
+  const [selectedRequest, setSelectedRequest] = useState<LandPurchaseRequest | null>(null);
+  const [submittingOfferForRequest, setSubmittingOfferForRequest] = useState<LandPurchaseRequest | null>(null);
+  const [editingRequest, setEditingRequest] = useState<LandPurchaseRequest | null>(null);
+  const [isCreateRequestOpen, setIsCreateRequestOpen] = useState(false);
+
+  // Require account before opening Create Request
+  const handleOpenCreateRequest = () => {
+    if (!currentUser) {
+      setAuthModalMode('register');
+      setAuthCustomNotice('يجب تسجيل الدخول أو إنشاء حساب جديد أولاً لنشر طلب شراء أرض على منصة أرضك.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setIsCreateRequestOpen(true);
+  };
+
+  // Require account before opening Add Listing
+  const handleOpenAddListing = () => {
+    if (!currentUser) {
+      setAuthModalMode('register');
+      setAuthCustomNotice('يجب تسجيل الدخول أو إنشاء حساب جديد أولاً لنشر إعلانك على أرضك.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setIsAddListingOpen(true);
+  };
 
   // Property comparison state
   const [comparedListings, setComparedListings] = useState<Listing[]>([]);
@@ -271,8 +310,12 @@ function MainApp() {
     <Layout
       currentRoute={currentRoute}
       onNavigate={(route) => navigateTo(route)}
-      onAddListingClick={() => setIsAddListingOpen(true)}
-      onLoginClick={() => setIsAuthModalOpen(true)}
+      onAddListingClick={handleOpenAddListing}
+      onLoginClick={() => {
+        setAuthModalMode('login');
+        setAuthCustomNotice(undefined);
+        setIsAuthModalOpen(true);
+      }}
     >
       {/* Dynamic SEO Manager for Title, Meta Description, OpenGraph & JSON-LD */}
       <SeoManager currentPath={currentPath} filters={searchPageFilters} />
@@ -317,11 +360,37 @@ function MainApp() {
         </>
       )}
 
+      {currentRoute === 'requests' && (
+        <PurchaseRequestsPage
+          onOpenCreateRequest={handleOpenCreateRequest}
+          onOpenRequestDetails={(req) => setSelectedRequest(req)}
+          onSubmitOffer={(req) => setSubmittingOfferForRequest(req)}
+          onNavigateToMyRequests={() => navigateTo('my-requests')}
+        />
+      )}
+
+      {currentRoute === 'my-requests' && (
+        <MyRequestsPage
+          onOpenCreateRequest={handleOpenCreateRequest}
+          onOpenRequestDetails={(req) => setSelectedRequest(req)}
+          onEditRequest={(req) => setEditingRequest(req)}
+          onOpenAuthModal={(mode) => {
+            setAuthModalMode(mode);
+            setIsAuthModalOpen(true);
+          }}
+          onBackToRequests={() => navigateTo('requests')}
+          onViewListing={(id) => {
+            const found = listings.find((item) => item.id === id);
+            if (found) setSelectedListing(found);
+          }}
+        />
+      )}
+
       {(currentRoute === 'my-listings' || currentRoute === 'profile') && (
         <UserDashboard
           onNavigateHome={() => navigateTo('home')}
           onNavigateToLands={() => navigateTo('lands')}
-          onOpenAddListing={() => setIsAddListingOpen(true)}
+          onOpenAddListing={handleOpenAddListing}
           onViewListingDetails={(listing) => setSelectedListing(listing)}
           onEditListing={(listing) => setEditingListing(listing)}
         />
@@ -375,6 +444,7 @@ function MainApp() {
             onNavigateToSearch={() => navigateTo('lands')}
             comparedIds={comparedIds}
             onToggleCompare={handleToggleCompare}
+            onAddListingClick={handleOpenAddListing}
           />
 
           <CategoriesSection onSelectCategory={handleCategorySelect} />
@@ -387,7 +457,7 @@ function MainApp() {
 
           <WhyUsSection />
 
-          <CtaBanner onAddListingClick={() => setIsAddListingOpen(true)} />
+          <CtaBanner onAddListingClick={handleOpenAddListing} />
 
           {/* Crawlable SEO Directory of Top Regions */}
           <SeoDirectory onSelectDestination={handleSeoDestinationSelect} />
@@ -437,6 +507,11 @@ function MainApp() {
       <AddListingModal
         isOpen={isAddListingOpen}
         onClose={() => setIsAddListingOpen(false)}
+        onOpenAuthModal={(mode) => {
+          setAuthModalMode(mode);
+          setAuthCustomNotice('يجب تسجيل الدخول أو إنشاء حساب جديد أولاً لنشر إعلانك على أرضك.');
+          setIsAuthModalOpen(true);
+        }}
         onListingCreated={(newId) => {
           navigateTo('my-listings');
           const created = listings.find((l) => l.id === newId);
@@ -458,10 +533,15 @@ function MainApp() {
         onClose={() => setReportingListing(null)}
       />
 
-      {/* Auth Modal (Login / Register / Quick Demo Roles) */}
+      {/* Auth Modal (Login / Register) */}
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setAuthCustomNotice(undefined);
+        }}
+        initialMode={authModalMode}
+        customNotice={authCustomNotice}
       />
 
       {/* Floating Price Drop Toast Notification */}
@@ -469,6 +549,55 @@ function MainApp() {
         onViewListing={(id) => {
           const found = listings.find((l) => l.id === id);
           if (found) setSelectedListing(found);
+        }}
+      />
+
+      {/* Create Purchase Request Modal */}
+      <CreateRequestModal
+        isOpen={isCreateRequestOpen}
+        onClose={() => setIsCreateRequestOpen(false)}
+        onRequestCreated={() => {
+          navigateTo('my-requests');
+        }}
+        onOpenAuthModal={(mode) => {
+          setAuthModalMode(mode);
+          setAuthCustomNotice('يجب تسجيل الدخول أو إنشاء حساب جديد أولاً لنشر طلب شراء أرض على منصة أرضك.');
+          setIsAuthModalOpen(true);
+        }}
+      />
+
+      {/* Submit Offer on Request Modal */}
+      <SubmitOfferModal
+        isOpen={Boolean(submittingOfferForRequest)}
+        request={submittingOfferForRequest}
+        onClose={() => setSubmittingOfferForRequest(null)}
+        onOpenAuthModal={(mode) => {
+          setAuthModalMode(mode);
+          setAuthCustomNotice('يجب تسجيل الدخول أو إنشاء حساب جديد أولاً لتقديم عرض أرض.');
+          setIsAuthModalOpen(true);
+        }}
+      />
+
+      {/* View Request Details & Offers Modal */}
+      <RequestDetailsModal
+        isOpen={Boolean(selectedRequest)}
+        request={selectedRequest}
+        onClose={() => setSelectedRequest(null)}
+        onSubmitOffer={(req) => setSubmittingOfferForRequest(req)}
+        onEditRequest={(req) => setEditingRequest(req)}
+        onViewListing={(id) => {
+          const found = listings.find((l) => l.id === id);
+          if (found) setSelectedListing(found);
+        }}
+      />
+
+      {/* Edit Request Modal */}
+      <EditRequestModal
+        isOpen={Boolean(editingRequest)}
+        request={editingRequest}
+        onClose={() => setEditingRequest(null)}
+        onRequestUpdated={() => {
+          // updated in context
         }}
       />
     </Layout>

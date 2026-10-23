@@ -9,6 +9,7 @@ interface LatestListingsSectionProps {
   onNavigateToSearch?: () => void;
   comparedIds?: string[];
   onToggleCompare?: (listing: Listing) => void;
+  onAddListingClick?: () => void;
 }
 
 export const LatestListingsSection: React.FC<LatestListingsSectionProps> = ({
@@ -17,6 +18,7 @@ export const LatestListingsSection: React.FC<LatestListingsSectionProps> = ({
   onNavigateToSearch,
   comparedIds = [],
   onToggleCompare,
+  onAddListingClick,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'بيع' | 'إيجار'>('all');
 
@@ -96,7 +98,7 @@ export const LatestListingsSection: React.FC<LatestListingsSectionProps> = ({
             <div className="pt-2">
               <button
                 type="button"
-                onClick={onNavigateToSearch}
+                onClick={onAddListingClick || onNavigateToSearch}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#166534] hover:bg-[#14532d] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
               >
                 <PlusCircle className="w-4 h-4" />
